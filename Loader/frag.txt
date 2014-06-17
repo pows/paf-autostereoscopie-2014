@@ -1,0 +1,60 @@
+
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+uniform sampler2D tex2;
+uniform sampler2D tex3;
+uniform sampler2D tex4;
+uniform sampler2D tex5;
+uniform sampler2D tex6;
+uniform sampler2D tex7;
+
+
+void getTextureSample(in int texID, out vec4 color) {
+
+  if(texID == 0 ) color = texture2D(tex0, gl_TexCoord[0].st);
+  if(texID == 1 ) color = texture2D(tex1, gl_TexCoord[0].st);
+  if(texID == 2 ) color = texture2D(tex2, gl_TexCoord[0].st);
+  if(texID == 3 ) color = texture2D(tex3, gl_TexCoord[0].st);
+  if(texID == 4 ) color = texture2D(tex4, gl_TexCoord[0].st);
+  if(texID == 5 ) color = texture2D(tex5, gl_TexCoord[0].st);
+  if(texID == 6 ) color = texture2D(tex6, gl_TexCoord[0].st);
+  if(texID == 7 ) color = texture2D(tex7, gl_TexCoord[0].st);
+
+}
+
+void main()
+{
+  int x = int(gl_FragCoord.x + 0.5);
+  int y = int(gl_FragCoord.y + 0.5) ;
+  int modulox = x/8;
+  int moduloy = y/8;
+  modulox = x - 8 * modulox;
+  moduloy = y - 8 * moduloy;
+
+  int viewLine = 7 - moduloy ;
+  int viewPix = viewLine + 3 * modulox ;
+  int viewR = viewPix - 8*(viewPix/8) ;
+  int viewG = viewPix + 1 - 8*((viewPix +1)/8);
+  int viewB = viewPix + 2 - 8*((viewPix +2)/8);
+
+  vec4 colR, colG, colB ;
+
+  colR = texture2D(tex0, gl_TexCoord[0].st);
+  colR = texture2D(tex2, gl_TexCoord[0].st);
+
+/*  gl_FragColor = colR;
+  colR = texture2D(tex1, gl_TexCoord[0].st);
+  gl_FragColor.g = colR.g;
+  colR = texture2D(tex2, gl_TexCoord[0].st);
+  gl_FragColor.b = colR.b;
+
+*/
+  getTextureSample(viewR, colR) ; 
+  gl_FragColor.r = colR.r ;
+  getTextureSample(viewG, colG) ; 
+  gl_FragColor.g = colG.g ;
+  getTextureSample(viewB, colB) ; 
+  gl_FragColor.b = colB.b ;
+
+}
+
