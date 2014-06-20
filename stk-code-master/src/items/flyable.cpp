@@ -21,6 +21,9 @@
 
 #include "items/flyable.hpp"
 
+#if defined(WIN32) && !defined(__CYGWIN__) && !defined(__MINGW32__)
+#  define isnan _isnan
+#endif
 #include <math.h>
 
 #include <IMeshManipulator.h>
@@ -35,11 +38,11 @@
 #include "karts/abstract_kart.hpp"
 #include "karts/explosion_animation.hpp"
 #include "modes/world.hpp"
+#include "network/flyable_info.hpp"
 #include "physics/physics.hpp"
 #include "tracks/track.hpp"
 #include "utils/constants.hpp"
 #include "utils/string_utils.hpp"
-#include "utils/vs.hpp"
 
 // static variables:
 float         Flyable::m_st_speed       [PowerupManager::POWERUP_MAX];
@@ -75,7 +78,6 @@ Flyable::Flyable(AbstractKart *kart, PowerupManager::PowerupType type,
 
     // Add the graphical model
     setNode(irr_driver->addMesh(m_st_model[type]));
-    irr_driver->applyObjectPassShader(getNode());
 #ifdef DEBUG
     std::string debug_name("flyable: ");
     debug_name += type;
@@ -143,9 +145,9 @@ void Flyable::createPhysics(float forw_offset, const Vec3 &velocity,
         // Just to get some additional information if the assert is triggered
         if(isnan(v.getX()) || isnan(v.getY()) || isnan(v.getZ()))
         {
-            Log::debug("[Flyable]", "vel %f %f %f v %f %f %f",
-                        velocity.getX(),velocity.getY(),velocity.getZ(),
-                        v.getX(),v.getY(),v.getZ());
+            printf("vel %f %f %f v %f %f %f\n",
+                   velocity.getX(),velocity.getY(),velocity.getZ(),
+                   v.getX(),v.getY(),v.getZ());
         }
 #endif
         assert(!isnan(v.getX()));
@@ -308,10 +310,6 @@ void Flyable::getLinearKartItemIntersection (const Vec3 &origin,
 
     float fire_th = (dx*dist - dz * sqrtf(dx*dx + dz*dz - dist*dist))
                   / (dx*dx + dz*dz);
-    if(fire_th>1)
-        fire_th = 1.0f;
-    else if (fire_th<-1.0f)
-        fire_th = -1.0f;
     fire_th = (((dist - dx*fire_th) / dz > 0) ? -acosf(fire_th)
                                               :  acosf(fire_th));
 
@@ -330,10 +328,8 @@ void Flyable::getLinearKartItemIntersection (const Vec3 &origin,
         fire_th += M_PI;
 
     //createPhysics offset
-    assert(sqrt(a*a+b*b)!=0);
     time -= forw_offset / sqrt(a*a+b*b);
 
-    assert(time!=0);
     *fire_angle = fire_th;
     *up_velocity = (0.5f * time * gravity) + (dy / time)
                  + (gy * target_kart->getSpeed());
@@ -415,6 +411,19 @@ bool Flyable::updateAndDelete(float dt)
 }   // updateAndDelete
 
 // ----------------------------------------------------------------------------
+/** Updates the position of a projectile based on information received frmo the
+ *  server.
+ */
+void Flyable::updateFromServer(const FlyableInfo &f, float dt)
+{
+    setXYZ(f.m_xyz);
+    setRotation(f.m_rotation);
+
+    // Update the graphical position
+    Moveable::update(dt);
+}   // updateFromServer
+
+// ----------------------------------------------------------------------------
 /** Returns true if the item hit the kart who shot it (to avoid that an item
  *  that's too close to the shooter hits the shooter).
  *  \param kart Kart who was hit.
@@ -437,6 +446,20 @@ bool Flyable::hit(AbstractKart *kart_hit, PhysicalObject* object)
 {
     // the owner of this flyable should not be hit by his own flyable
     if(isOwnerImmunity(kart_hit)) return false;
+
+    if (kart_hit != NULL)
+    {    //TODO: reduce shield time; add other string ?
+        RaceGUIBase* gui = World::getWorld()->getRaceGUI();
+        irr::core::stringw hit_message =
+            StringUtils::insertValues(getHitString(kart_hit),
+                                      core::stringw(kart_hit->getName()),
+                                      core::stringw(m_owner ->getName())
+                                                                         );
+        if(hit_message.size()>0)
+            gui->addMessage(translations->fribidize(hit_message), NULL, 3.0f,
+                            video::SColor(255, 255, 255, 255), false);
+    }
+
     m_has_hit_something=true;
 
     return true;

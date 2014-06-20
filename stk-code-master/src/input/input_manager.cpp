@@ -17,14 +17,12 @@
 //  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "input/input_manager.hpp"
-
-#include "config/user_config.hpp"
-#include "graphics/camera.hpp"
-#include "graphics/irr_driver.hpp"
+#include "main_loop.hpp"
 #include "guiengine/engine.hpp"
 #include "guiengine/event_handler.hpp"
 #include "guiengine/modaldialog.hpp"
 #include "guiengine/screen.hpp"
+#include "graphics/irr_driver.hpp"
 #include "input/device_manager.hpp"
 #include "input/input.hpp"
 #include "karts/controller/controller.hpp"
@@ -163,7 +161,7 @@ void InputManager::handleStaticAction(int key, int value)
             if (value ==0 )
                 irr_driver->requestScreenshot();
             break;
-            /*
+
         case KEY_F1:
             if (UserConfigParams::m_artist_debug_mode && world)
             {
@@ -224,6 +222,7 @@ void InputManager::handleStaticAction(int key, int value)
                 kart->setPowerup(PowerupManager::POWERUP_ZIPPER, 10000);
             }
             break;
+
         case KEY_F8:
             if (UserConfigParams::m_artist_debug_mode && value && world)
             {
@@ -247,6 +246,7 @@ void InputManager::handleStaticAction(int key, int value)
                 }
             }
             break;
+
         case KEY_F9:
             if (UserConfigParams::m_artist_debug_mode && world)
             {
@@ -259,7 +259,7 @@ void InputManager::handleStaticAction(int key, int value)
                     kart->setPowerup(PowerupManager::POWERUP_SWATTER, 10000);
             }
             break;
-            */
+
         case KEY_F10:
             if(world && value)
             {
@@ -269,7 +269,7 @@ void InputManager::handleStaticAction(int key, int value)
                     history->Save();
             }
             break;
-            /*
+
         case KEY_F11:
             if (UserConfigParams::m_artist_debug_mode && value &&
                 control_is_pressed && world)
@@ -277,11 +277,29 @@ void InputManager::handleStaticAction(int key, int value)
                 world->getPhysics()->nextDebugMode();
             }
             break;
-            */
+
         case KEY_F12:
             if(value)
                 UserConfigParams::m_display_fps =
                     !UserConfigParams::m_display_fps;
+            break;
+
+        case KEY_KEY_P:
+            if (UserConfigParams::m_artist_debug_mode && value &&
+                control_is_pressed)
+                UserConfigParams::m_profiler_enabled =
+                                         !UserConfigParams::m_profiler_enabled;
+            break;
+        case KEY_HOME:
+            if (value)
+            {
+                video::SOverrideMaterial &mat =
+                    irr_driver->getVideoDriver()->getOverrideMaterial();
+
+                mat.Material.Wireframe ^= 1;
+                mat.EnableFlags = video::EMF_WIREFRAME;
+                mat.EnablePasses = scene::ESNRP_SOLID | scene::ESNRP_TRANSPARENT;
+            }
             break;
         default:
             break;
@@ -480,15 +498,6 @@ void InputManager::dispatchInput(Input::InputType type, int deviceID,
     if (m_mode == INPUT_SENSE_KEYBOARD ||
         m_mode == INPUT_SENSE_GAMEPAD)
     {
-        // Do not pick disabled gamepads for input sensing
-         if (type == Input::IT_STICKBUTTON || type == Input::IT_STICKMOTION)
-        {
-             GamePadDevice *gPad = m_device_manager->getGamePadFromIrrID(deviceID);
-             DeviceConfig *conf = gPad->getConfiguration();
-             if (!conf->isEnabled())
-                 return;
-         }
-
         inputSensing(type, deviceID, button, axisDirection,  value);
         return;
     }
@@ -550,7 +559,7 @@ void InputManager::dispatchInput(Input::InputType type, int deviceID,
                                      action == PA_MENU_CANCEL ) )
             {
                 // returns true if the event was handled
-                if (KartSelectionScreen::getRunningInstance()->playerQuit( player ))
+                if (KartSelectionScreen::getInstance()->playerQuit( player ))
                 {
                     return; // we're done here
                 }
@@ -585,7 +594,7 @@ void InputManager::dispatchInput(Input::InputType type, int deviceID,
 
                     if (device != NULL)
                     {
-                        KartSelectionScreen::getRunningInstance()->joinPlayer(device,
+                        KartSelectionScreen::getInstance()->playerJoin(device,
                                                                        false );
                     }
                 }

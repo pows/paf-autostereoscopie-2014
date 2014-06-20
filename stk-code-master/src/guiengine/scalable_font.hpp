@@ -5,19 +5,17 @@
 #ifndef __C_GUI_FONT_H_INCLUDED__
 #define __C_GUI_FONT_H_INCLUDED__
 
-#include "utils/leak_check.hpp"
-
 #include "IrrCompileConfig.h"
+
 #include "IGUIFontBitmap.h"
 #include "irrString.h"
 #include "irrMap.h"
 #include "IXMLReader.h"
 #include "IReadFile.h"
 #include "irrArray.h"
-
-
 #include <map>
-#include <string>
+
+#include "utils/leak_check.hpp"
 
 namespace irr
 {
@@ -63,6 +61,9 @@ class ScalableFont : public IGUIFontBitmap
     bool m_is_hollow_copy;
     bool m_rtl;
 
+    /** Position in range [0..1] of the single tab stop we support */
+    float m_tab_stop;
+
 public:
 
     LEAK_CHECK()
@@ -74,7 +75,7 @@ public:
     int           m_fallback_kerning_width;
 
     //! constructor
-    ScalableFont(IGUIEnvironment* env, const std::string &filename);
+    ScalableFont(IGUIEnvironment* env, const io::path& filename);
 
     /** Creates a hollow copy of this font; i.e. the underlying font data is the *same* for
       * both fonts. The advantage of doing this is that you can change "view" parameters
@@ -143,6 +144,9 @@ public:
     float getScale() const { return m_scale; }
 
     void updateRTL();
+
+    /** \param pos position of the tab stop, in range [0..1] */
+    void setTabStop(float pos) { m_tab_stop = pos; }
 
 private:
 

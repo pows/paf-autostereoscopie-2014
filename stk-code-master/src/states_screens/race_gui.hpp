@@ -26,6 +26,7 @@
 #include <irrString.h>
 using namespace irr;
 
+#include "config/player.hpp"
 #include "states_screens/race_gui_base.hpp"
 
 class AbstractKart;
@@ -43,6 +44,12 @@ private:
 
     Material        *m_speed_meter_icon;
     Material        *m_speed_bar_icon;
+
+    /** Translated string 'lap' displayed every frame. */
+    core::stringw    m_string_lap;
+
+    /** Translated string 'rank' displayed every frame. */
+    core::stringw    m_string_rank;
 
     // Minimap related variables
     // -------------------------
@@ -75,42 +82,25 @@ private:
     /** Distance of map from bottom of screen. */
     int              m_map_bottom;
 
-    /** Maximum lap display length (either 9/9  or 99/99). */
-    int              m_lap_width;
+    /** Maximum string length of 'rank', 'lap', '99/99'. Used to position
+     *  the rank/lap text correctly close to the right border. */
+    int              m_rank_lap_width;
 
     /** Maximum string length for the timer */
     int              m_timer_width;
 
-    /** Height of the digit font. */
-    int              m_font_height;
 
-    /** Animation state: none, getting smaller (old value), 
-     *  getting bigger (new number). */
-    enum AnimationState {AS_NONE, AS_SMALLER, AS_BIGGER};
-    std::vector<AnimationState> m_animation_states;
-
-    /** When the animation state was changed. */
-    std::vector<float> m_rank_animation_start_times;
-
-    /** Stores the previous rank for each kart. Used for the rank animation. */
-    std::vector<int> m_last_ranks;
-
-    bool m_is_tutorial;
+    bool             m_is_tutorial;
 
     /* Display informat for one player on the screen. */
     void drawEnergyMeter       (int x, int y, const AbstractKart *kart,
                                 const core::recti &viewport,
                                 const core::vector2df &scaling);
-    void drawSpeedEnergyRank   (const AbstractKart* kart,
+    void drawSpeedAndEnergy    (const AbstractKart* kart,
                                 const core::recti &viewport,
                                 const core::vector2df &scaling);
-    void drawLap               (const AbstractKart* kart,
-                                const core::recti &viewport,
-                                const core::vector2df &scaling);
-    void drawRank              (const AbstractKart *kart,
-                                const core::vector2df &offset,
-                                float min_ratio, int meter_width,
-                                int meter_height);
+    void drawRankLap           (const AbstractKart* kart,
+                                const core::recti &viewport);
 
     /** Display items that are shown once only (for all karts). */
     void drawGlobalMiniMap     ();
@@ -122,7 +112,6 @@ public:
 
          RaceGUI();
         ~RaceGUI();
-    virtual void reset();
     virtual void renderGlobal(float dt);
     virtual void renderPlayerView(const Camera *camera, float dt);
 

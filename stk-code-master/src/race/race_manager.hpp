@@ -42,10 +42,10 @@ static const std::string IDENT_STD      ("STANDARD"        );
 static const std::string IDENT_TTRIAL   ("STD_TIMETRIAL"   );
 static const std::string IDENT_FTL      ("FOLLOW_LEADER"   );
 static const std::string IDENT_STRIKES  ("BATTLE_3_STRIKES");
-static const std::string IDENT_EASTER   ("EASTER_EGG_HUNT" );
+static const std::string IDENT_EASTER   ("EASTER_EGG_HUNT");
 static const std::string IDENT_SOCCER   ("SOCCER"          );
-static const std::string IDENT_OVERWORLD("OVERWORLD"       );
-static const std::string IDENT_CUTSCENE ("CUTSCENE"        );
+static const std::string IDENT_OVERWORLD("OVERWORLD"   );
+static const std::string IDENT_CUSTSCENE("CUTSCENE"   );
 
 /**
  * The race manager has two functions:
@@ -198,7 +198,7 @@ public:
             case MINOR_MODE_3_STRIKES:      return false;
             case MINOR_MODE_EASTER_EGG:     return false;
             case MINOR_MODE_SOCCER:         return false;
-            default: assert(false);         return false;
+            default: assert(false); return NULL;
         }
     }
 
@@ -468,11 +468,6 @@ public:
         return m_local_player_karts[n];
     }
     // ------------------------------------------------------------------------
-    const RemoteKartInfo& getKartInfo(unsigned int n) const
-    {
-        return m_player_karts[n];
-    }
-    // ------------------------------------------------------------------------
     unsigned int getNumLocalPlayers() const
     {
         return m_local_player_karts.size();
@@ -561,11 +556,6 @@ public:
     float getOverallTime(int kart) const
     {
         return m_kart_status[kart].m_overall_time;
-    }
-    // ------------------------------------------------------------------------
-    float getKartRaceTime(int kart) const
-    {
-        return m_kart_status[kart].m_last_time;
     }
     // ------------------------------------------------------------------------
     KartType getKartType(int kart) const
@@ -682,7 +672,7 @@ public:
       * \brief Higher-level method to start a GP without having to care about
       *  the exact startup sequence
       */
-    void  startGP(const GrandPrixData* gp, bool from_overworld,
+    void  startGP(const GrandPrixData* gp, bool from_overworld, 
                   bool continue_saved_gp);
 
     /**
@@ -694,9 +684,6 @@ public:
       */
     void  startSingleRace(const std::string &track_ident, const int num_laps,
                           bool from_overworld);
-    /** Receive and store the information from sendKartsInformation()
-      */
-    void  setupPlayerKartInfo();
 
     bool raceWasStartedFromOverworld() const
     {
@@ -713,7 +700,7 @@ public:
       */
     bool allPlayerFinished() const
     {
-        return m_num_finished_players == m_player_karts.size();
+        return m_num_finished_players==m_player_karts.size();
     }
     // ------------------------------------------------------------------------
     void kartFinishedRace(const AbstractKart* kart, float time);

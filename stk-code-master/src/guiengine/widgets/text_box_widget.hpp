@@ -35,7 +35,7 @@ namespace GUIEngine
         virtual void onTextUpdated() = 0;
     };
     
-    /** \brief A text field widget.
+    /** \brief A text field widget. 
       * \ingroup widgetsgroup
       */
     class TextBoxWidget : public Widget
@@ -68,15 +68,8 @@ namespace GUIEngine
         void clearListeners();
         
         irr::core::stringw getText() const;
-        void setPasswordBox(bool passwordBox, wchar_t passwordChar = L'*');
         
         virtual void elementRemoved();
-
-        /** Override method from base class Widget */
-        virtual void setActivated();
-
-        /** Override method from base class Widget */
-        virtual void setDeactivated();
     };
 }
 

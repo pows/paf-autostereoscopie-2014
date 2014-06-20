@@ -25,7 +25,6 @@
 #include "config/user_config.hpp"
 #include "io/file_manager.hpp"
 #include "race/race_manager.hpp"
-#include "utils/vs.hpp"
 
 #ifdef __APPLE__
 #  include <OpenAL/al.h>
@@ -34,9 +33,15 @@
 #endif
 
 #include <assert.h>
-#include <math.h>
 #include <stdio.h>
 #include <string>
+
+#if defined(WIN32) && !defined(__CYGWIN__)  && !defined(__MINGW32__)
+#  define isnan _isnan
+#else
+#  include <math.h>
+#endif
+
 
 SFXOpenAL::SFXOpenAL(SFXBuffer* buffer, bool positional, float gain, bool ownsBuffer) : SFXBase()
 {
@@ -250,7 +255,7 @@ void SFXOpenAL::position(const Vec3 &position)
         return;
     if (!m_ok)
     {
-        Log::warn("SFX", "Position called on non-ok SFX <%s>", m_soundBuffer->getFileName().c_str());
+        fprintf(stderr, "WARNING, position called on non-ok SFX <%s>\n", m_soundBuffer->getFileName().c_str());
         return;
     }
     if (!m_positional)
@@ -260,7 +265,7 @@ void SFXOpenAL::position(const Vec3 &position)
         // (note that 0 players is also possible, in cutscenes)
         if (race_manager->getNumLocalPlayers() < 2)
         {
-            Log::warn("SFX", "Position called on non-positional SFX");
+            fprintf(stderr, "WARNING, position called on non-positional SFX\n");
         }
         return;
     }

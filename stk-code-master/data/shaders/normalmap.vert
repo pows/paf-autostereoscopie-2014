@@ -1,41 +1,54 @@
-layout (std140) uniform MatrixesData
-{
-    mat4 ViewMatrix;
-    mat4 ProjectionMatrix;
-    mat4 InverseViewMatrix;
-    mat4 InverseProjectionMatrix;
-    mat4 ShadowViewProjMatrixes[4];
-};
+// Shader based on work by Fabien Sanglard
+// Released under the terms of CC-BY 3.0
 
-uniform mat4 ModelMatrix;
-uniform mat4 InverseModelMatrix;
+varying vec3 lightVec;
+varying vec3 halfVec;
+varying vec3 eyeVec;
 
-#if __VERSION__ >= 130
-in vec3 Position;
-in vec2 Texcoord;
-in vec3 Tangent;
-in vec3 Bitangent;
-out vec3 tangent;
-out vec3 bitangent;
-out vec2 uv;
-#else
-attribute vec3 Position;
-attribute vec2 Texcoord;
-attribute vec3 Tangent;
-attribute vec3 Bitangent;
-varying vec3 tangent;
-varying vec3 bitangent;
-varying vec2 uv;
-#endif
-
+uniform vec3 lightdir;
 
 void main()
 {
-	mat4 ModelViewProjectionMatrix = ProjectionMatrix * ViewMatrix * ModelMatrix;
-	mat4 TransposeInverseModelView = transpose(InverseModelMatrix * InverseViewMatrix);
-	uv = Texcoord;
-	tangent = (TransposeInverseModelView * vec4(Tangent, 1.)).xyz;
-	bitangent = (TransposeInverseModelView * vec4(Bitangent, 1.)).xyz;
-	gl_Position = ModelViewProjectionMatrix * vec4(Position, 1.);
+
+	gl_TexCoord[0] =  gl_MultiTexCoord0;
+
+	// Building the matrix Eye Space -> Tangent Space
+	vec3 n = normalize (gl_NormalMatrix * gl_Normal);
+	vec3 t = normalize (gl_NormalMatrix * gl_MultiTexCoord1.xyz); // tangent
+	vec3 b = cross (n, t);
+
+	vec3 vertexPosition = vec3(gl_ModelViewMatrix *  gl_Vertex);
+
+	// transform light and half angle vectors by tangent basis
+	vec3 v;
+	v.x = dot (lightdir, t);
+	v.y = dot (lightdir, b);
+	v.z = dot (lightdir, n);
+	lightVec = normalize (v);
+
+
+	v.x = dot (vertexPosition, t);
+	v.y = dot (vertexPosition, b);
+	v.z = dot (vertexPosition, n);
+	eyeVec = normalize (v);
+
+
+	vertexPosition = normalize(vertexPosition);
+
+	// Normalize the halfVector to pass it to the fragment shader
+
+	// No need to divide by two, the result is normalized anyway.
+	// vec3 halfVector = normalize((vertexPosition + lightDir) / 2.0);
+	vec3 halfVector = normalize(vertexPosition + lightdir);
+	v.x = dot (halfVector, t);
+	v.y = dot (halfVector, b);
+	v.z = dot (halfVector, n);
+
+	// No need to normalize, t,b,n and halfVector are normal vectors.
+	//normalize (v);
+	halfVec = v ;
+
+
+	gl_Position = ftransform();
 
 }

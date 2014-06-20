@@ -16,7 +16,7 @@
 //  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // skinning.vert
-#version 330 compatibility
+
 #define MAX_JOINT_NUM 36
 #define MAX_LIGHT_NUM 8
 
@@ -68,8 +68,8 @@ void main()
 	ModelTransform *= vertTran;
 
 	gl_Position = ModelTransform * gl_Vertex;
-	gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
-	gl_TexCoord[1] = gl_TextureMatrix[1] * gl_MultiTexCoord1;
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+	gl_TexCoord[1] = gl_MultiTexCoord1;
 
 	/*
 	// Reflections.

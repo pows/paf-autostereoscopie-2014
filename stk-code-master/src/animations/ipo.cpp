@@ -19,12 +19,15 @@
 #include "animations/ipo.hpp"
 
 #include "io/xml_node.hpp"
-#include "utils/vs.hpp"
-#include "utils/log.hpp"
 
 #include <string.h>
 #include <algorithm>
-#include <math.h>
+
+#if defined(WIN32) && !defined(__CYGWIN__)  && !defined(__MINGW32__)
+#  define isnan _isnan
+#else
+#  include <math.h>
+#endif
 
 const std::string Ipo::m_all_channel_names[IPO_MAX] =
                 {"LocX", "LocY", "LocZ", "LocXYZ",
@@ -43,8 +46,8 @@ Ipo::IpoData::IpoData(const XMLNode &curve, float fps, bool reverse)
 {
     if(curve.getName()!="curve")
     {
-        Log::warn("Animations", "Expected 'curve' for animation, got '%s' --> Ignored.",
-                  curve.getName().c_str());
+        fprintf(stderr, "Expected 'curve' for animation, got '%s' --> Ignored.\n",
+            curve.getName().c_str());
         return;
     }
     std::string channel;
@@ -60,9 +63,9 @@ Ipo::IpoData::IpoData(const XMLNode &curve, float fps, bool reverse)
     }
     if(m_channel==IPO_MAX)
     {
-        Log::error("Animation", "Unknown animation channel: '%s' --> Ignored",
+        fprintf(stderr, "Unknown animation channel: '%s' - aborting.\n",
                 channel.c_str());
-        return;
+        exit(-1);
     }
 
     std::string interp;
@@ -77,9 +80,10 @@ Ipo::IpoData::IpoData(const XMLNode &curve, float fps, bool reverse)
     else if (extend=="const" ) m_extend = ET_CONST;
     else
     {
+        // FIXME: do we want an error message here?
         // For now extrap and cyclic_extrap do not work
-        Log::warn("Animation", "Unsupported extend '%s' - defaulting to CONST.",
-                  extend.c_str());
+        fprintf(stderr, "Unsupported extend '%s' - defaulting to CONST.\n",
+                extend.c_str());
         m_extend = ET_CONST;
     }
 

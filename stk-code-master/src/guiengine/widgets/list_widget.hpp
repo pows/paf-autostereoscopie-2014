@@ -22,13 +22,10 @@
 
 #include <irrString.h>
 
-#include "guiengine/widgets/CGUISTKListBox.h"
 #include "guiengine/widget.hpp"
 #include "guiengine/widgets/button_widget.hpp"
 #include "utils/leak_check.hpp"
 #include "utils/ptr_vector.hpp"
-#include "IGUIElement.h"
-
 
 namespace irr { namespace gui { class STKModifiedSpriteBank; } }
 
@@ -50,6 +47,7 @@ namespace GUIEngine
     class ListWidget : public Widget
     {
         friend class Skin;
+
         
         /** \brief whether this list has icons */
         bool m_use_icons;
@@ -57,6 +55,14 @@ namespace GUIEngine
         /** \brief if m_use_icons is true, this will contain the icon bank */
         irr::gui::STKModifiedSpriteBank* m_icons;
                 
+        struct ListItem
+        {
+            std::string m_internal_name;
+            irr::core::stringw m_label;
+            int m_current_id;
+        };
+        std::vector< ListItem > m_items;
+
         PtrVector< ButtonWidget > m_header_elements;
         
         ButtonWidget* m_selected_column;
@@ -86,10 +92,8 @@ namespace GUIEngine
         std::vector< Column > m_header;
         
         IListWidgetHeaderListener* m_listener;
-
+        
     public:
-        typedef irr::gui::CGUISTKListBox::ListItem ListItem;
-        typedef ListItem::ListCell ListCell;
         
         LEAK_CHECK()
         
@@ -126,13 +130,8 @@ namespace GUIEngine
          * \param icon   ID of the icon within the icon bank. Only used if an icon bank was passed.
          * \pre may only be called after the widget has been added to the screen with add()
          */
-        void addItem(   const std::string& internal_name,
-                        const irr::core::stringw &name,
-                        const int icon=-1,
-                        bool center = false);
-
-        void addItem(   const std::string& internal_name,
-                        const std::vector<ListCell>& contents);
+        void addItem(const std::string& internal_name, 
+                     const irr::core::stringw &name, const int icon=-1);
         
         /**
           * \brief erases all items in the list
@@ -158,7 +157,7 @@ namespace GUIEngine
           */
         std::string getSelectionInternalName();
         
-        irr::core::stringw getSelectionLabel(const int cell = 0) const;
+        irr::core::stringw getSelectionLabel() const;
         
         void selectItemWithLabel(const irr::core::stringw& name);
         
@@ -178,24 +177,18 @@ namespace GUIEngine
           * \brief rename an item and/or change its icon based on its ID
           * \pre may only be called after the widget has been added to the screen with add()
           */
-        void renameCell(const int row_num, const int col_num, const irr::core::stringw newName, const int icon=-1);
+        void renameItem(const int itemID, const irr::core::stringw newName, const int icon=-1);
         
-        /**
-         * renames first cell only
-         */
-        void renameItem(const int row_num, const irr::core::stringw newName, const int icon=-1);
-        void renameItem(const std::string  & internal_name, const irr::core::stringw newName, const int icon=-1);
-
         /**
           * \brief rename an item and/or change its icon based on its internal name
           * \pre may only be called after the widget has been added to the screen with add()
           */
-        void renameCell(const std::string internalName, const int col_num, const irr::core::stringw newName,
+        void renameItem(const std::string internalName, const irr::core::stringw newName,
                         const int icon=-1)
         {
             const int id = getItemID(internalName);
             assert(id != -1);
-            renameCell( id, col_num, newName, icon );
+            renameItem( id, newName, icon );
         }
         
         /**
@@ -208,7 +201,7 @@ namespace GUIEngine
         /**
           * \brief Make an item red to mark an error, for instance
           * \pre may only be called after the widget has been added to the screen with add()
-          */
+          */        
         void markItemRed(const std::string internalName, bool red=true)
         {
             const int id = getItemID(internalName);
@@ -224,8 +217,8 @@ namespace GUIEngine
         }
 
         /** Override callback from Widget */
-        virtual EventPropagation transmitEvent(Widget* w,
-                                               const std::string& originator,
+        virtual EventPropagation transmitEvent(Widget* w, 
+                                               const std::string& originator, 
                                                const int playerID);
         
         void setColumnListener(IListWidgetHeaderListener* listener)

@@ -21,8 +21,6 @@
 #include "IShaderConstantSetCallBack.h"
 #include "S3DVertex.h"
 #include "SMaterial.h"
-#include "graphics/camera.hpp"
-#include "graphics/glwrap.hpp"
 
 #include <vector>
 
@@ -35,17 +33,19 @@ using namespace irr;
 /** \brief   Handles post processing, eg motion blur
  *  \ingroup graphics
  */
-class PostProcessing: public IReferenceCounted
+class PostProcessing : public video::IShaderConstantSetCallBack
 {
 private:
-    video::SMaterial    m_material;
+    video::ITexture    *m_render_target;
+    /** Material to be used when blurring is used. */
+    video::SMaterial    m_blur_material;
+
+    bool                m_supported;
 
     /** Boost time, how long the boost should be displayed. This also
      *  affects the strength of the effect: longer boost time will
      *  have a stronger effect. */
     std::vector<float>  m_boost_time;
-
-    bool m_any_boost;
 
     /** The center of blurring, in texture coordinates [0,1]).*/
     std::vector<core::vector2df> m_center;
@@ -53,17 +53,19 @@ private:
     /** The center to which the blurring is aimed at, in [0,1]. */
     std::vector<core::vector2df> m_direction;
 
+    /** True if any of the cameras is using post processing. */
+    bool                m_used_pp_this_frame;
+
+    /** Currently active camera during post-processing, needed in the
+     *  OnSetConstants callback. */
+    unsigned int        m_current_camera;
+
+
     struct Quad { video::S3DVertex v0, v1, v2, v3; };
 
     /** The vertices for the rectangle used for each camera. This includes
      *  the vertex position, normal, and texture coordinate. */
     std::vector<Quad> m_vertices;
-
-    video::ITexture *m_areamap;
-
-    u32 m_sunpixels;
-
-    void setMotionBlurCenterY(const u32 num, const float y);
 
 public:
                  PostProcessing(video::IVideoDriver* video_driver);
@@ -71,37 +73,21 @@ public:
 
     void         reset();
     /** Those should be called around the part where we render the scene to be post-processed */
-    void         begin();
+    void         beginCapture();
+    void         endCapture();
     void         update(float dt);
 
-    /** Generate diffuse and specular map */
-    void         renderSunlight();
-    void         renderShadowedSunlight(const std::vector<core::matrix4> &sun_ortho_matrix, unsigned depthtex);
-
-    void renderFog();
-    void renderSSAO();
-    void renderDiffuseEnvMap(const float *bSHCoeff, const float *gSHCoeff, const float *rSHCoeff);
-    void renderGI(const core::matrix4 &RHMatrix, const core::vector3df &rh_extend, unsigned shr, unsigned shg, unsigned shb);
-
-    /** Blur the in texture */
-    void renderGaussian3Blur(FrameBuffer &in_fbo, FrameBuffer &auxiliary);
-    void renderGaussian6Blur(FrameBuffer &in_fbo, FrameBuffer &auxiliary);
-    void renderGaussian17TapBlur(FrameBuffer &in_fbo, FrameBuffer &auxiliary);
-
-    /** Render tex. Used for blit/texture resize */
-    void renderPassThrough(unsigned tex);
-    void applyMLAA();
-
-    void renderMotionBlur(unsigned cam, FrameBuffer &in_fbo, FrameBuffer &out_fbo);
-    void renderGlow(unsigned tex);
-
     /** Render the post-processed scene */
-    FrameBuffer *render(scene::ICameraSceneNode * const camnode);
+    void         render();
+
+    /** Is the hardware able to use post-processing? */
+    inline bool  isSupported() const                 {return m_supported;}
 
     /** Use motion blur for a short time */
     void         giveBoost(unsigned int cam_index);
 
-    void         setSunPixels(const u32 in) { m_sunpixels = in; }
+    /** Implement IShaderConstantsSetCallback. Shader constants setter for post-processing */
+    virtual void OnSetConstants(video::IMaterialRendererServices *services, s32 user_data);
 };
 
 #endif // HEADER_POST_PROCESSING_HPP

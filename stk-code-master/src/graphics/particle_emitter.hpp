@@ -47,8 +47,6 @@ class ParticleEmitter : public NoCopy
 {
 private:
 
-    bool                             m_is_glsl;
-
     /** Irrlicht's particle systems. */
     scene::IParticleSystemSceneNode *m_node;
 

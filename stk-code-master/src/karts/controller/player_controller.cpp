@@ -21,8 +21,8 @@
 
 #include "audio/sfx_base.hpp"
 #include "audio/sfx_manager.hpp"
+#include "config/player.hpp"
 #include "config/stk_config.hpp"
-#include "config/user_config.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/irr_driver.hpp"
 #include "graphics/post_processing.hpp"
@@ -35,7 +35,6 @@
 #include "karts/skidding.hpp"
 #include "karts/rescue_animation.hpp"
 #include "modes/world.hpp"
-#include "network/network_world.hpp"
 #include "race/history.hpp"
 #include "states_screens/race_gui_base.hpp"
 #include "utils/constants.hpp"
@@ -219,10 +218,6 @@ void PlayerController::action(PlayerAction action, int value)
     default:
        break;
     }
-    if (World::getWorld()->isNetworkWorld() && NetworkWorld::getInstance()->isRunning())
-    {
-        NetworkWorld::getInstance()->controllerAction(this, action, value);
-    }
 
 }   // action
 
@@ -311,7 +306,7 @@ void PlayerController::update(float dt)
     {
         // Print a dividing line so that it's easier to see which events
         // get received in which order in the one frame.
-        Log::debug("PlayerController", "irr_driver", "-------------------------------------");
+        Log::debug("PlayerController", "irr_driver", "-------------------------------------\n");
     }
 
     // Don't do steering if it's replay. In position only replay it doesn't

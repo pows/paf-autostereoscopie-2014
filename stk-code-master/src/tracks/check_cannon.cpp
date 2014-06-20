@@ -20,7 +20,6 @@
 
 #include "animations/animation_base.hpp"
 #include "animations/ipo.hpp"
-#include "config/user_config.hpp"
 #include "graphics/show_curve.hpp"
 #include "io/xml_node.hpp"
 #include "karts/abstract_kart.hpp"

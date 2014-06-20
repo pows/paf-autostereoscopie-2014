@@ -19,9 +19,13 @@
 
 #include "karts/kart_properties_manager.hpp"
 
+#include <algorithm>
+#include <ctime>
+#include <stdio.h>
+#include <stdexcept>
+#include <iostream>
+
 #include "challenges/unlock_manager.hpp"
-#include "config/player_manager.hpp"
-#include "config/player_profile.hpp"
 #include "config/stk_config.hpp"
 #include "config/user_config.hpp"
 #include "graphics/irr_driver.hpp"
@@ -30,12 +34,6 @@
 #include "karts/kart_properties.hpp"
 #include "utils/log.hpp"
 #include "utils/string_utils.hpp"
-
-#include <algorithm>
-#include <ctime>
-#include <stdio.h>
-#include <stdexcept>
-#include <iostream>
 
 KartPropertiesManager *kart_properties_manager=0;
 
@@ -66,9 +64,6 @@ void KartPropertiesManager::addKartSearchDir(const std::string &s)
 }   // addKartSearchDir
 
 //-----------------------------------------------------------------------------
-/** Removes all karts from the KartPropertiesManager, so that they can be
- *  reloade. This is necessary after a change of the screen resolution.
- */
 void KartPropertiesManager::unloadAllKarts()
 {
     m_karts_properties.clearAndDeleteAll();
@@ -76,7 +71,22 @@ void KartPropertiesManager::unloadAllKarts()
     m_kart_available.clear();
     m_groups_2_indices.clear();
     m_all_groups.clear();
+    m_kart_search_path.clear();
 }   // unloadAllKarts
+
+//-----------------------------------------------------------------------------
+/** Reloads all karts, i.e. reloads the meshes and textures. This is used
+ *  when changing the screen resolution.
+ */
+void KartPropertiesManager::reLoadAllKarts()
+{
+    m_karts_properties.clearAndDeleteAll();
+    m_selected_karts.clear();
+    m_kart_available.clear();
+    m_groups_2_indices.clear();
+    m_all_groups.clear();
+    loadAllKarts(false);
+}   // reLoadAllKarts
 
 //-----------------------------------------------------------------------------
 /** Remove a kart from the kart manager.
@@ -157,7 +167,7 @@ void KartPropertiesManager::loadAllKarts(bool loading_icon)
         // If not, check each subdir of this directory.
         // --------------------------------------------
         std::set<std::string> result;
-        file_manager->listFiles(result, *dir);
+        file_manager->listFiles(result, *dir, /*is_full_path*/ true);
         for(std::set<std::string>::const_iterator subdir=result.begin();
             subdir!=result.end(); subdir++)
         {
@@ -191,8 +201,8 @@ bool KartPropertiesManager::loadKart(const std::string &dir)
     }
     catch (std::runtime_error& err)
     {
-        Log::error("[Kart_Properties_Manager]","Giving up loading '%s': %s",
-                    config_filename.c_str(), err.what());
+        std::cerr << "Giving up loading '" << config_filename.c_str()
+                  << "' : " << err.what() << std::endl;
         return false;
     }
 
@@ -201,7 +211,7 @@ bool KartPropertiesManager::loadKart(const std::string &dir)
     if (kart_properties->getVersion() < stk_config->m_min_kart_version ||
         kart_properties->getVersion() > stk_config->m_max_kart_version)
     {
-        Log::warn("[Kart_Properties_Manager]", "Warning: kart '%s' is not "
+        Log::warn("Kart_Properties_Manager", "Warning: kart '%s' is not "
                   "supported by this binary, ignored.",
                   kart_properties->getIdent().c_str());
         delete kart_properties;
@@ -229,7 +239,7 @@ bool KartPropertiesManager::loadKart(const std::string &dir)
   */
 void KartPropertiesManager::setHatMeshName(const std::string &hat_name)
 {
-    for (unsigned int i=0; i<m_karts_properties.size(); i++)
+    for (int i=0; i<m_karts_properties.size(); i++)
     {
         m_karts_properties[i].setHatMeshName(hat_name);
     }
@@ -241,7 +251,7 @@ void KartPropertiesManager::setHatMeshName(const std::string &hat_name)
  */
 const int KartPropertiesManager::getKartId(const std::string &ident) const
 {
-    for (unsigned int i=0; i<m_karts_properties.size(); i++)
+    for (int i=0; i<m_karts_properties.size(); i++)
     {
         if (m_karts_properties[i].getIdent() == ident)
             return i;
@@ -280,7 +290,7 @@ const KartProperties* KartPropertiesManager::getKartById(int i) const
 std::vector<std::string> KartPropertiesManager::getAllAvailableKarts() const
 {
     std::vector<std::string> all;
-    for (unsigned int i=0; i<m_karts_properties.size(); i++)
+    for (int i=0; i<m_karts_properties.size(); i++)
     {
         if (m_kart_available[i])
             all.push_back(m_karts_properties[i].getIdent());
@@ -296,7 +306,7 @@ std::vector<std::string> KartPropertiesManager::getAllAvailableKarts() const
  */
 void KartPropertiesManager::setUnavailableKarts(std::vector<std::string> karts)
 {
-    for (unsigned int i=0; i<m_karts_properties.size(); i++)
+    for (int i=0; i<m_karts_properties.size(); i++)
     {
         if (!m_kart_available[i]) continue;
 
@@ -306,7 +316,7 @@ void KartPropertiesManager::setUnavailableKarts(std::vector<std::string> karts)
         {
             m_kart_available[i] = false;
 
-            Log::error("[Kart_Properties_Manager]",
+            Log::error("Kart_Properties_Manager",
                        "Kart '%s' not available on all clients, disabled.",
                        m_karts_properties[i].getIdent().c_str());
         }   // kart not in list
@@ -321,7 +331,7 @@ int KartPropertiesManager::getKartByGroup(const std::string& group,
                                           int n) const
 {
     int count=0;
-    for (unsigned int i=0; i<m_karts_properties.size(); i++)
+    for (int i=0; i<m_karts_properties.size(); i++)
     {
         std::vector<std::string> groups = m_karts_properties[i].getGroups();
         if (std::find(groups.begin(), groups.end(), group) == groups.end())
@@ -355,8 +365,7 @@ bool KartPropertiesManager::kartAvailable(int kartid)
         if ( kartid == *it) return false;
     }
     const KartProperties *kartprop = getKartById(kartid);
-    if( PlayerManager::getCurrentPlayer()->isLocked(kartprop->getIdent()) )
-        return false;
+    if(unlock_manager->getCurrentSlot()->isLocked(kartprop->getIdent())) return false;
     return true;
 }   // kartAvailable
 
@@ -382,7 +391,7 @@ const std::vector<int> KartPropertiesManager::getKartsInGroup(
     if (g == ALL_KART_GROUPS_ID)
     {
         std::vector<int> out;
-        for (unsigned int n=0; n<m_karts_properties.size(); n++)
+        for (int n=0; n<m_karts_properties.size(); n++)
         {
             out.push_back(n);
         }
@@ -428,8 +437,10 @@ void KartPropertiesManager::getRandomKartList(int count,
         catch (std::runtime_error& ex)
         {
             (void)ex;
-            Log::error("[KartPropertiesManager]", "getRandomKartList : WARNING, "
-                "can't find kart '%s'", existing_karts[i].getKartName().c_str());
+            std::cerr <<
+                "[KartPropertiesManager] getRandomKartList : WARNING, "
+                "can't find kart '"
+                << existing_karts[i].getKartName() << "'\n";
         }
     }
     for(unsigned int i=0; i<ai_list->size(); i++)
@@ -442,8 +453,10 @@ void KartPropertiesManager::getRandomKartList(int count,
         catch (std::runtime_error &ex)
         {
             (void)ex;
-            Log::error("[KartPropertiesManager]", "getRandomKartList : WARNING, "
-                "can't find kart '%s'",(*ai_list)[i].c_str());
+            std::cerr <<
+                "[KartPropertiesManager] getRandomKartList : WARNING, "
+                "can't find kart '"
+                << (*ai_list)[i] << "'\n";
         }
     }
 
@@ -464,7 +477,7 @@ void KartPropertiesManager::getRandomKartList(int count,
                 const KartProperties &kp=m_karts_properties[karts_in_group[i]];
                 if (!used[karts_in_group[i]]                 &&
                     m_kart_available[karts_in_group[i]]      &&
-                    !PlayerManager::getCurrentPlayer()->isLocked(kp.getIdent())   )
+                    !unlock_manager->getCurrentSlot()->isLocked(kp.getIdent())   )
                 {
                     random_kart_queue.push_back(kp.getIdent());
                 }

@@ -61,7 +61,6 @@ namespace GUIEngine
     template<typename SCREEN>
     class ScreenSingleton
     {
-    protected:
         static SCREEN* singleton;
 
     public:
@@ -260,7 +259,7 @@ namespace GUIEngine
         /**
          * \brief optional callback you can override to be notified at every frame.
          */
-        virtual void onUpdate(float dt) { };
+        virtual void onUpdate(float dt, irr::video::IVideoDriver*) { };
 
         /**
          * \return which music to play at this screen
@@ -303,23 +302,8 @@ namespace GUIEngine
                                  int axisDir,
                                  int value) {}
 
-        /** Callback that gets called when a dialog is closed.
-         *  Can be used to set focus for instance.
-         */
-        virtual void onDialogClose() {}
     };
 
-    class CutsceneScreen : public Screen
-    {
-    public:
-        CutsceneScreen(const char* name) : Screen(name, false)
-        {
-            setNeeds3D(true);
-            m_throttle_FPS = false;
-        }
-
-        virtual void onCutsceneEnd() = 0;
-    };
 }
 
 #endif

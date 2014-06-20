@@ -19,7 +19,6 @@
 #include "guiengine/widgets/dynamic_ribbon_widget.hpp"
 #include "io/file_manager.hpp"
 #include "states_screens/state_manager.hpp"
-#include "utils/vs.hpp"
 
 #include <IGUIEnvironment.h>
 #include <sstream>
@@ -29,6 +28,10 @@
 using namespace GUIEngine;
 using namespace irr::core;
 using namespace irr::gui;
+
+#ifndef round
+#  define round(x)  (floor(x+0.5f))
+#endif
 
 DynamicRibbonWidget::DynamicRibbonWidget(const bool combo, const bool multi_row) : Widget(WTYPE_DYNAMIC_RIBBON)
 {
@@ -46,7 +49,7 @@ DynamicRibbonWidget::DynamicRibbonWidget(const bool combo, const bool multi_row)
     m_scrolling_enabled    = true;
 
     // by default, set all players to have no selection in this ribbon
-    for (unsigned int n=0; n<MAX_PLAYER_COUNT; n++)
+    for (int n=0; n<MAX_PLAYER_COUNT; n++)
     {
         m_selected_item[n] = -1;
     }
@@ -265,6 +268,8 @@ void DynamicRibbonWidget::add()
             assert(m_row_amount != -1);
         }
 
+        // m_row_amount = (int)round((m_h - m_label_height) / (float)m_child_height);
+
         if (m_properties[PROP_MAX_ROWS].size() > 0)
         {
             const int max_rows = atoi(m_properties[PROP_MAX_ROWS].c_str());
@@ -305,7 +310,7 @@ void DynamicRibbonWidget::buildInternalStructure()
     //printf("****DynamicRibbonWidget::buildInternalStructure()****\n");
 
     // ---- Clean-up what was previously there
-    for (unsigned int i=0; i<m_children.size(); i++)
+    for (int i=0; i<m_children.size(); i++)
     {
         IGUIElement* elem = m_children[i].m_element;
         if (elem != NULL && m_children[i].m_type == WTYPE_RIBBON)
@@ -313,6 +318,7 @@ void DynamicRibbonWidget::buildInternalStructure()
             elem->remove();
             m_children.erase(i);
             i--;
+            if (i<0) i = 0;
         }
     }
     m_rows.clearWithoutDeleting(); // rows already deleted above, don't double-delete
@@ -324,7 +330,7 @@ void DynamicRibbonWidget::buildInternalStructure()
     // ---- determine column amount
     const float row_height = (float)(m_h - m_label_height)/(float)m_row_amount;
     float ratio_zoom = (float)row_height / (float)(m_child_height - m_label_height);
-    m_col_amount = (int)roundf( m_w / ( m_child_width*ratio_zoom ) );
+    m_col_amount = (int)round( m_w / ( m_child_width*ratio_zoom ) );
 
     // ajust column amount to not add more item slots than we actually need
     const int item_count = m_items.size();
@@ -431,7 +437,7 @@ void DynamicRibbonWidget::buildInternalStructure()
     {
         // debug checks
         int childrenCount = 0;
-        for (unsigned int n=0; n<m_rows.size(); n++)
+        for (int n=0; n<m_rows.size(); n++)
         {
             childrenCount += m_rows[n].m_children.size();
         }
@@ -712,7 +718,7 @@ void DynamicRibbonWidget::onRibbonWidgetFocus(RibbonWidget* emitter, const int p
 {
     if (m_deactivated) return;
 
-    if (emitter->m_selection[playerID] >= (int)emitter->m_children.size())
+    if (emitter->m_selection[playerID] >= emitter->m_children.size())
     {
         emitter->m_selection[playerID] = emitter->m_children.size()-1;
     }
@@ -758,7 +764,7 @@ void DynamicRibbonWidget::scroll(const int x_delta)
     // update selection markers in child ribbon
     if (m_combo)
     {
-        for (unsigned int n=0; n<MAX_PLAYER_COUNT; n++)
+        for (int n=0; n<MAX_PLAYER_COUNT; n++)
         {
             RibbonWidget* ribbon = m_rows.get(0); // there is a single row when we can select items
             int id = m_selected_item[n] - m_scroll_offset;
@@ -774,7 +780,7 @@ void DynamicRibbonWidget::scroll(const int x_delta)
  used to ensure that all children ribbons always select the same column */
 void DynamicRibbonWidget::propagateSelection()
 {
-    for (unsigned int p=0; p<MAX_PLAYER_COUNT; p++)
+    for (int p=0; p<MAX_PLAYER_COUNT; p++)
     {
         // find selection in current ribbon
         RibbonWidget* selected_ribbon = (RibbonWidget*)getSelectedRibbon(p);
@@ -807,7 +813,7 @@ void DynamicRibbonWidget::propagateSelection()
         {
             if (ribbon != selected_ribbon)
             {
-                ribbon->m_selection[p] = (int)roundf(where*(ribbon->m_children.size()-1));
+                ribbon->m_selection[p] = (int)round(where*(ribbon->m_children.size()-1));
                 ribbon->updateSelection();
             }
         }
@@ -1024,7 +1030,7 @@ bool DynamicRibbonWidget::findItemInRows(const char* name, int* p_row, int* p_id
     int row = -1;
     int id = -1;
 
-    for (unsigned int r=0; r<m_rows.size(); r++)
+    for (int r=0; r<m_rows.size(); r++)
     {
         id = m_rows[r].findItemNamed(name);
         if (id > -1)

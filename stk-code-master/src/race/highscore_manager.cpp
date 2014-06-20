@@ -23,14 +23,13 @@
 
 #include "config/user_config.hpp"
 #include "io/file_manager.hpp"
-#include "io/utf_writer.hpp"
+#include "io/xml_writer.hpp"
 #include "race/race_manager.hpp"
 #include "utils/constants.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
 
 HighscoreManager* highscore_manager=0;
-const unsigned int HighscoreManager::CURRENT_HSCORE_FILE_VERSION = 3;
 
 HighscoreManager::HighscoreManager()
 {
@@ -60,7 +59,7 @@ void HighscoreManager::setFilename()
     }
     else
     {
-        m_filename=file_manager->getUserConfigFile("highscore.xml");
+        m_filename=file_manager->getHighscoreFile("highscore.xml");
     }
 
     return;
@@ -76,7 +75,7 @@ void HighscoreManager::loadHighscores()
         saveHighscores();
         if(m_can_write)
         {
-            Log::info("Highscore Manager", "New highscore file '%s' created.\n",
+            Log::error("Highscore Manager", "New highscore file '%s' created.\n",
                     m_filename.c_str());
         }
         delete root;
@@ -150,7 +149,7 @@ void HighscoreManager::saveHighscores()
 
     try
     {
-        UTFWriter highscore_file(m_filename.c_str());
+        XMLWriter highscore_file(m_filename.c_str());
         highscore_file << L"<?xml version=\"1.0\"?>\n";
         highscore_file << L"<highscores version=\"" << CURRENT_HSCORE_FILE_VERSION << "\">\n";
 

@@ -85,8 +85,7 @@ void QuadSet::init(const std::string &filename)
     XMLNode *xml = file_manager->createXMLTree(filename);
     if(!xml || xml->getName()!="quads")
     {
-        Log::error("[QuadSet::load] ERROR : QuadSet '%s' not found.", filename.c_str());
-        delete xml;
+        fprintf(stderr, "[QuadSet::load] ERROR : QuadSet '%s' not found.\n", filename.c_str());
         return;
     }
     for(unsigned int i=0; i<xml->getNumNodes(); i++)
@@ -94,7 +93,7 @@ void QuadSet::init(const std::string &filename)
         const XMLNode *xml_node = xml->getNode(i);
         if(xml_node->getName()!="quad")
         {
-            Log::warn("[QuadSet::load] WARNING: Unsupported node type '%s' found in '%s' - ignored.",
+            printf("[QuadSet::load] WARNING: Unsupported node type '%s' found in '%s' - ignored.\n",
                    xml_node->getName().c_str(), filename.c_str());
             continue;
         }

@@ -20,7 +20,6 @@
 #include "audio/music_manager.hpp"
 #include "audio/sfx_manager.hpp"
 #include "audio/sfx_base.hpp"
-#include "config/user_config.hpp"
 #include "guiengine/screen.hpp"
 #include "guiengine/widgets/check_box_widget.hpp"
 #include "guiengine/widgets/dynamic_ribbon_widget.hpp"
@@ -28,10 +27,10 @@
 #include "guiengine/widget.hpp"
 #include "io/file_manager.hpp"
 #include "states_screens/options_screen_input.hpp"
+#include "states_screens/options_screen_players.hpp"
 #include "states_screens/options_screen_ui.hpp"
 #include "states_screens/options_screen_video.hpp"
 #include "states_screens/state_manager.hpp"
-#include "states_screens/user_screen.hpp"
 #include "utils/translation.hpp"
 
 #include <iostream>
@@ -107,7 +106,7 @@ void OptionsScreenAudio::eventCallback(Widget* widget, const std::string& name, 
 
         if (selection == "tab_audio") StateManager::get()->replaceTopMostScreen(OptionsScreenAudio::getInstance());
         else if (selection == "tab_video") StateManager::get()->replaceTopMostScreen(OptionsScreenVideo::getInstance());
-        else if (selection == "tab_players") StateManager::get()->replaceTopMostScreen(TabbedUserScreen::getInstance());
+        else if (selection == "tab_players") StateManager::get()->replaceTopMostScreen(OptionsScreenPlayers::getInstance());
         else if (selection == "tab_controls") StateManager::get()->replaceTopMostScreen(OptionsScreenInput::getInstance());
         else if (selection == "tab_ui") StateManager::get()->replaceTopMostScreen(OptionsScreenUI::getInstance());
     }
@@ -148,7 +147,7 @@ void OptionsScreenAudio::eventCallback(Widget* widget, const std::string& name, 
         if(w->getState() == false)
             music_manager->stopMusic();
         else
-            music_manager->startMusic(music_manager->getCurrentMusic(), 0);
+            music_manager->startMusic(music_manager->getCurrentMusic());
     }
     else if(name == "sfx_enabled")
     {

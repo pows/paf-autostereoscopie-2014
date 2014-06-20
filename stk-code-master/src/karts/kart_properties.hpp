@@ -222,7 +222,7 @@ private:
     float       m_nitro_max;
     /** Bubble gum diration. */
     float       m_bubblegum_time;
-    /** Torque to add when a bubble gum was hit in order to make the kart go
+    /** Torque to add when a bubble gum was hit in order to make the kart go 
      *  sideways a bit. */
     float       m_bubblegum_torque;
     /** Fraction of top speed that can be reached maximum after hitting a
@@ -387,8 +387,6 @@ public:
     void  getAllData        (const XMLNode * root);
     void  checkAllSet       (const std::string &filename);
     float getStartupBoost   () const;
-    bool  isInGroup         (const std::string &group) const;
-    bool operator<(const KartProperties &other) const;
 
     // ------------------------------------------------------------------------
     /** Returns the (maximum) speed for a given turn radius.
@@ -433,9 +431,9 @@ public:
     /** Returns the name of this kart.
         \note Pass it through fridibi as needed, this is the LTR name
       */
-    core::stringw getName() const
+    const wchar_t* getName() const
     {
-        return core::stringw(translations->w_gettext(m_name.c_str()));
+        return translations->w_gettext(m_name.c_str());
     }
 
     // ------------------------------------------------------------------------
@@ -610,7 +608,7 @@ public:
     /** Returns the torque to add when a bubble gum was hit . */
     float getBubblegumTorque() const { return m_bubblegum_torque; }
     // ------------------------------------------------------------------------
-    /** Returns the fraction of top speed that can be reached maximum after
+    /** Returns the fraction of top speed that can be reached maximum after 
      *  hitting a bubble gum. */
     float getBubblegumSpeedFraction() const {return m_bubblegum_speed_fraction;}
     // ------------------------------------------------------------------------
@@ -869,7 +867,7 @@ public:
     /** The speed with which a kart should lean (in radians/s). */
     float getLeanSpeed() const { return m_lean_speed; }
     // ------------------------------------------------------------------------
-    /** Return show long a jump must last in order to play the jump
+    /** Return show long a jump must last in order to play the jump 
      *  animation. */
     float getJumpAnimationTime() const { return m_jump_animation_time; }
     // ------------------------------------------------------------------------

@@ -13,7 +13,6 @@
 #include "guiengine/engine.hpp"
 #include "io/file_manager.hpp"
 #include "utils/translation.hpp"
-#include "graphics/glwrap.hpp"
 
 namespace irr
 {
@@ -21,9 +20,9 @@ namespace gui
 {
 
 //! constructor
-ScalableFont::ScalableFont(IGUIEnvironment *env, const std::string &filename)
-            : Driver(0), SpriteBank(0), Environment(env), WrongCharacter(0),
-              MaxHeight(0), GlobalKerningWidth(0), GlobalKerningHeight(0)
+ScalableFont::ScalableFont(IGUIEnvironment *env, const io::path& filename)
+: Driver(0), SpriteBank(0), Environment(env), WrongCharacter(0),
+    MaxHeight(0), GlobalKerningWidth(0), GlobalKerningHeight(0)
 {
 #ifdef _DEBUG
     setDebugName("ScalableFont");
@@ -33,6 +32,7 @@ ScalableFont::ScalableFont(IGUIEnvironment *env, const std::string &filename)
     m_fallback_kerning_width = 0;
     m_fallback_font_scale    = 1.0f;
     m_scale                  = 1.0f;
+    m_tab_stop               = 0.5f;
     m_is_hollow_copy         = false;
     m_black_border           = false;
     m_shadow                 = false;
@@ -44,7 +44,7 @@ ScalableFont::ScalableFont(IGUIEnvironment *env, const std::string &filename)
         // don't grab environment, to avoid circular references
         Driver = Environment->getVideoDriver();
 
-        SpriteBank = Environment->addEmptySpriteBank(io::path(filename.c_str()));
+        SpriteBank = Environment->addEmptySpriteBank(filename);
         if (SpriteBank)
             SpriteBank->grab();
     }
@@ -112,7 +112,7 @@ void ScalableFont::doReadXmlFile(io::IXMLReader* xml)
                 */
 
                 io::IXMLReader* included = file_manager->createXMLReader(
-                    file_manager->getAsset(FileManager::FONT, filename.c_str()));
+                    file_manager->getFontFile(filename.c_str()));
                 if (included != NULL)
                 {
                     doReadXmlFile(included);
@@ -123,8 +123,7 @@ void ScalableFont::doReadXmlFile(io::IXMLReader* xml)
             {
                 // add a texture
                 core::stringc filename = xml->getAttributeValue(L"filename");
-                core::stringc fn = file_manager->getAsset(FileManager::FONT,
-                                                          filename.c_str()).c_str();
+                core::stringc fn = file_manager->getFontFile(filename.c_str()).c_str();
                 u32 i = (u32)xml->getAttributeValueAsInt(L"index");
 
                 float scale=1.0f;
@@ -501,12 +500,15 @@ void ScalableFont::draw(const core::stringw& text,
     core::position2d<s32> offset = position.UpperLeftCorner;
     core::dimension2d<s32> text_dimension;
 
-    if (m_rtl || hcenter || vcenter || clip)
+    // When we use the "tab" hack, disable right-alignment, it messes up everything
+    bool has_tab = (text.findFirst(L'\t') != -1);
+
+    if ((m_rtl && !has_tab) || hcenter || vcenter || clip)
     {
         text_dimension = getDimension(text.c_str());
 
-        if (hcenter)    offset.X += (position.getWidth() - text_dimension.Width) / 2;
-        else if (m_rtl) offset.X += (position.getWidth() - text_dimension.Width);
+        if (hcenter)                offset.X += (position.getWidth() - text_dimension.Width) / 2;
+        else if (m_rtl && !has_tab) offset.X += (position.getWidth() - text_dimension.Width);
 
         if (vcenter)    offset.Y += (position.getHeight() - text_dimension.Height) / 2;
         if (clip)
@@ -515,6 +517,14 @@ void ScalableFont::draw(const core::stringw& text,
             clippedRect.clipAgainst(*clip);
             if (!clippedRect.isValid()) return;
         }
+    }
+
+    if (m_rtl && has_tab)
+    {
+        const int where = text.findFirst(L'\t');
+        core::stringw substr = text.subString(0, where-1);
+        text_dimension = getDimension(substr.c_str()) + getDimension(L"XX");
+        offset.X += (int)(position.getWidth()*m_tab_stop-text_dimension.Width);
     }
 
     // ---- collect character locations
@@ -526,6 +536,14 @@ void ScalableFont::draw(const core::stringw& text,
     for (u32 i = 0; i<text_size; i++)
     {
         wchar_t c = text[i];
+
+        //hack: one tab character is supported, it moves the cursor to the tab stop
+        if (c == L'\t')
+        {
+            offset.X = (int)(position.UpperLeftCorner.X +
+                             position.getWidth()*m_tab_stop);
+            continue;
+        }
 
         if (c == L'\r' ||          // Windows breaks
             c == L'\n'    )        // Unix breaks
@@ -602,6 +620,8 @@ void ScalableFont::draw(const core::stringw& text,
 
         core::rect<s32> dest(offsets[n] + core::position2di(0, y_shift), size);
 
+        video::SColor colors[] = {color, color, color, color};
+
         video::ITexture* texture = (fallback[n] ?
                                     m_fallback_font->SpriteBank->getTexture(texID) :
                                     SpriteBank->getTexture(texID) );
@@ -642,17 +662,18 @@ void ScalableFont::draw(const core::stringw& text,
         {
             // draw black border
             video::SColor black(color.getAlpha(),0,0,0);
+            video::SColor black_colors[] = {black, black, black, black};
 
             for (int x_delta=-2; x_delta<=2; x_delta++)
             {
                 for (int y_delta=-2; y_delta<=2; y_delta++)
                 {
                     if (x_delta == 0 || y_delta == 0) continue;
-                    draw2DImage(texture,
-                                dest + core::position2d<s32>(x_delta, y_delta),
-                                source,
-                                clip,
-                                black, true);
+                    driver->draw2DImage(texture,
+                                        dest + core::position2d<s32>(x_delta, y_delta),
+                                        source,
+                                        clip,
+                                        black_colors, true);
                 }
             }
         }
@@ -663,19 +684,20 @@ void ScalableFont::draw(const core::stringw& text,
             static video::SColor orange(color.getAlpha(), 255, 100, 0);
             static video::SColor yellow(color.getAlpha(), 255, 220, 15);
             video::SColor title_colors[] = {yellow, orange, orange, yellow};
-            draw2DImage(texture,
-                        dest,
-                        source,
-                        clip,
-                        title_colors, true);
+            driver->draw2DImage(texture,
+                                dest,
+                                source,
+                                clip,
+                                title_colors, true);
         }
         else
         {
-            draw2DImage(texture,
-                        dest,
-                        source,
-                        clip,
-                        color, true);
+            driver->draw2DImage(texture,
+                                dest,
+                                source,
+                                clip,
+                                colors, true);
+
 #ifdef FONT_DEBUG
             driver->draw2DLine(core::position2d<s32>(dest.UpperLeftCorner.X,  dest.UpperLeftCorner.Y),
                                core::position2d<s32>(dest.UpperLeftCorner.X,  dest.LowerRightCorner.Y),

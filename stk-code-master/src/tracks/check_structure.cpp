@@ -18,16 +18,14 @@
 
 #include "tracks/check_structure.hpp"
 
-#include "config/user_config.hpp"
-#include "io/xml_node.hpp"
+#include <algorithm>
+
 #include "karts/abstract_kart.hpp"
 #include "modes/linear_world.hpp"
 #include "modes/world.hpp"
 #include "race/race_manager.hpp"
 #include "tracks/check_lap.hpp"
 #include "tracks/check_manager.hpp"
-
-#include <algorithm>
 
 
 CheckStructure::CheckStructure(const XMLNode &node, unsigned int index)

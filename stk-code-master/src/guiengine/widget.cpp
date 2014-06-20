@@ -34,7 +34,11 @@ using namespace gui;
 #include "io/file_manager.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
-#include "utils/vs.hpp"
+
+
+#ifndef round
+# define round(x)  (floor(x+0.5f))
+#endif
 
 namespace GUIEngine
 {
@@ -86,7 +90,7 @@ Widget::Widget(WidgetType type, bool reserve_id)
     m_tab_down_root = -1;
     m_tab_up_root = -1;
 
-    for (unsigned int n=0; n<MAX_PLAYER_COUNT; n++)
+    for (int n=0; n<MAX_PLAYER_COUNT; n++)
     {
         m_player_focus[n] = false;
         m_selected[n] = false;
@@ -94,7 +98,6 @@ Widget::Widget(WidgetType type, bool reserve_id)
 
     m_reserved_id     = -1;
     m_deactivated     = false;
-    m_is_visible      = true;
     m_badges          = 0;
 
     // set a default value, derivates can override this as they wish
@@ -108,7 +111,7 @@ Widget::~Widget()
     assert(m_magic_number == 0xCAFEC001);
 
     // If any player focused this widget, unset that focus
-    for (unsigned int n=0; n<MAX_PLAYER_COUNT; n++)
+    for (int n=0; n<MAX_PLAYER_COUNT; n++)
     {
         if (m_player_focus[n])
         {
@@ -136,7 +139,7 @@ void Widget::elementRemoved()
     m_element = NULL;
 
     // If any player focused this widget, unset that focus
-    for (unsigned int n=0; n<MAX_PLAYER_COUNT; n++)
+    for (int n=0; n<MAX_PLAYER_COUNT; n++)
     {
         if (m_player_focus[n])
         {
@@ -316,18 +319,7 @@ void Widget::setParent(IGUIElement* parent)
 
 bool Widget::isVisible() const
 {
-    if (m_element != NULL)
-        assert(m_element->isVisible() == m_is_visible);
-    return m_is_visible;
-}
-
-// -----------------------------------------------------------------------------
-
-bool Widget::isActivated() const
-{
-    if (isVisible())
-        return !m_deactivated;
-    return false;
+    return m_element && m_element->isVisible();
 }
 
 // -----------------------------------------------------------------------------
@@ -338,7 +330,7 @@ void Widget::setVisible(bool visible)
     {
         m_element->setVisible(visible);
     }
-    m_is_visible = visible;
+    m_deactivated = !visible;
 
     const int childrenCount = m_children.size();
     for (int n=0; n<childrenCount; n++)
@@ -357,3 +349,4 @@ void Widget::moveIrrlichtElement()
                                                          irr::core::dimension2di(m_w, m_h) ) );
     }
 }
+

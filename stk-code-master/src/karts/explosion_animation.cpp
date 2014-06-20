@@ -19,13 +19,12 @@
 #include "karts/explosion_animation.hpp"
 
 #include "audio/sfx_manager.hpp"
-#include "graphics/callbacks.hpp"
-#include "graphics/camera.hpp"
 #include "items/attachment.hpp"
 #include "karts/abstract_kart.hpp"
 #include "karts/kart_properties.hpp"
 #include "modes/world.hpp"
 #include "tracks/track.hpp"
+#include "utils/log.hpp" //TODO: remove after debugging is done
 
 /** A static create function that does only create an explosion if
  *  the explosion happens to be close enough to affect the kart.

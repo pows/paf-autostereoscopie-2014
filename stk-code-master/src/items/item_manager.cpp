@@ -30,7 +30,6 @@
 #include "karts/abstract_kart.hpp"
 #include "modes/linear_world.hpp"
 #include "network/network_manager.hpp"
-#include "network/network_world.hpp"
 #include "tracks/quad_graph.hpp"
 #include "tracks/track.hpp"
 #include "utils/string_utils.hpp"
@@ -40,9 +39,7 @@
 
 std::vector<scene::IMesh *> ItemManager::m_item_mesh;
 std::vector<scene::IMesh *> ItemManager::m_item_lowres_mesh;
-std::vector<video::SColorf> ItemManager::m_glow_color;
 ItemManager *               ItemManager::m_item_manager = NULL;
-
 
 //-----------------------------------------------------------------------------
 /** Creates one instance of the item manager. */
@@ -67,9 +64,6 @@ void ItemManager::destroy()
 void ItemManager::loadDefaultItemMeshes()
 {
     m_item_mesh.resize(Item::ITEM_LAST-Item::ITEM_FIRST+1, NULL);
-    m_glow_color.resize(Item::ITEM_LAST-Item::ITEM_FIRST+1,
-                        video::SColorf(255.0f, 255.0f, 255.0f) );
-
     m_item_lowres_mesh.resize(Item::ITEM_LAST-Item::ITEM_FIRST+1, NULL);
 
     // A temporary mapping of items to names used in the XML file:
@@ -83,7 +77,7 @@ void ItemManager::loadDefaultItemMeshes()
     item_names[Item::ITEM_BUBBLEGUM_NOLOK] = "bubblegum-nolok";
     item_names[Item::ITEM_EASTER_EGG ] = "easter-egg";
 
-    const std::string file_name = file_manager->getAsset("items.xml");
+    const std::string file_name = file_manager->getDataFile("items.xml");
     const XMLNode *root         = file_manager->createXMLTree(file_name);
     for(unsigned int i=Item::ITEM_FIRST; i<=Item::ITEM_LAST; i++)
     {
@@ -97,13 +91,12 @@ void ItemManager::loadDefaultItemMeshes()
         scene::IMesh *mesh = irr_driver->getAnimatedMesh(model_filename);
         if(!node || model_filename.size()==0 || !mesh)
         {
-            Log::fatal("[ItemManager]", "Item model '%s' in items.xml could not be loaded "
-                        "- aborting", name.c_str());
+            fprintf(stderr, "Item model '%s' in items.xml could not be loaded "
+                            "- aborting", name.c_str());
             exit(-1);
         }
         mesh->grab();
         m_item_mesh[i]            = mesh;
-        node->get("glow", &(m_glow_color[i]));
 
         std::string lowres_model_filename;
         node->get("lowmodel", &lowres_model_filename);
@@ -300,6 +293,9 @@ void ItemManager::collectedItem(Item *item, AbstractKart *kart, int add_info)
  */
 void  ItemManager::checkItemHit(AbstractKart* kart)
 {
+    // Only do this on the server
+    if(network_manager->getMode()==NetworkManager::NW_CLIENT) return;
+
     // We could use m_items_in_quads to to check for item hits: take the quad
     // of the graph node of the kart, and only check items in that quad. But
     // then we also need to check for any adjacent quads (since an item just
@@ -317,14 +313,7 @@ void  ItemManager::checkItemHit(AbstractKart* kart)
         // we pass the kart and the position separately.
         if((*i)->hitKart(kart->getXYZ(), kart))
         {
-            // if we're not playing online, pick the item.
-            if (!NetworkWorld::getInstance()->isRunning())
-                collectedItem(*i, kart);
-            else if (NetworkManager::getInstance()->isServer())
-            {
-                collectedItem(*i, kart);
-                NetworkWorld::getInstance()->collectedItem(*i, kart);
-            }
+            collectedItem(*i, kart);
         }   // if hit
     }   // for m_all_items
 }   // checkItemHit

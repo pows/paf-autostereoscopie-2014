@@ -17,6 +17,7 @@
 
 #include "states_screens/dialogs/add_device_dialog.hpp"
 
+#include "config/player.hpp"
 #include "guiengine/engine.hpp"
 #include "guiengine/scalable_font.hpp"
 #include "guiengine/widget.hpp"
@@ -24,6 +25,7 @@
 #include "input/device_manager.hpp"
 #include "input/input_manager.hpp"
 #include "states_screens/dialogs/message_dialog.hpp"
+#include "states_screens/options_screen_players.hpp"
 #include "states_screens/options_screen_input.hpp"
 #include "states_screens/state_manager.hpp"
 #include "utils/cpp2011.h"
@@ -42,8 +44,6 @@ using namespace irr::core;
 
 AddDeviceDialog::AddDeviceDialog() : ModalDialog(0.90f, 0.80f)
 {
-    doInit();
-
     ScalableFont* font = GUIEngine::getFont();
     const int textHeight = GUIEngine::getFontHeight();
     const int buttonHeight = textHeight + 10;

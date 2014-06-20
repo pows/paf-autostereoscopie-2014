@@ -109,8 +109,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\include&quot;;C:\WinDDK\inc\api"
-				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;WIIUSE_STATIC"
+				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -128,8 +127,6 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				AdditionalDependencies="setupapi.lib hid.lib"
-				AdditionalLibraryDirectories="C:\WinDDK\lib\win7\i386"
 			/>
 			<Tool
 				Name="VCALinkTool"

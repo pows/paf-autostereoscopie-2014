@@ -3,7 +3,7 @@
 //  Copyright (C) 2007-2013 Joerg Henrichs
 //
 //  Physics improvements and linear intersection algorithm by
-//  Copyright (C) 2009-2013 David Mikos.
+//  Copyright (C) 2009-2013 David Mikos. 
 //
 //  This program is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU General Public License
@@ -33,6 +33,8 @@
 #include "tracks/track.hpp"
 #include "utils/constants.hpp"
 #include "utils/string_utils.hpp"
+
+#include "utils/log.hpp" //TODO: remove after debugging is done
 
 // -----------------------------------------------------------------------------
 Plunger::Plunger(AbstractKart *kart)
@@ -117,6 +119,25 @@ void Plunger::init(const XMLNode &node, scene::IMesh *plunger_model)
 }   // init
 
 // ----------------------------------------------------------------------------
+/** Picks a random message to be displayed when a kart is hit by a plunger.
+ *  \param The kart that was hit (ignored here).
+ *  \returns The string to display.
+ */
+const core::stringw Plunger::getHitString(const AbstractKart *kart) const
+{
+    const int PLUNGER_IN_FACE_STRINGS_AMOUNT = 2;
+    RandomGenerator r;
+    switch (r.get(PLUNGER_IN_FACE_STRINGS_AMOUNT))
+    {
+        //I18N: shown when a player receives a plunger in his face
+        case 0: return _LTR("%0 gets a fancy mask from %1");
+        //I18N: shown when a player receives a plunger in his face
+        case 1: return _LTR("%1 merges %0's face with a plunger");
+        default:assert(false); return L"";   // avoid compiler warning
+    }
+}   // getHitString
+
+// ----------------------------------------------------------------------------
 /** Updates the bowling ball ineach frame. If this function returns true, the
  *  object will be removed by the projectile manager.
  *  \param dt Time step size.
@@ -159,6 +180,9 @@ bool Plunger::hit(AbstractKart *kart, PhysicalObject *obj)
 {
     if(isOwnerImmunity(kart)) return false;
     
+    RaceGUIBase* gui = World::getWorld()->getRaceGUI();
+    irr::core::stringw hit_message;
+
     // pulling back makes no sense in battle mode, since this mode is not a race.
     // so in battle mode, always hide view
     if( m_reverse_mode || race_manager->isBattleMode() )
@@ -168,6 +192,13 @@ bool Plunger::hit(AbstractKart *kart, PhysicalObject *obj)
             kart->blockViewWithPlunger();
             if (kart->getController()->isPlayerController())
                 sfx_manager->quickSound("plunger");
+
+            hit_message += StringUtils::insertValues(getHitString(kart),
+                                                     core::stringw(kart->getName()),
+                                                     core::stringw(m_owner->getName())
+                                                    ).c_str();
+            gui->addMessage(translations->fribidize(hit_message), NULL, 3.0f,
+                            video::SColor(255, 255, 255, 255), false);
         }
 
         m_keep_alive = 0;

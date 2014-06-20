@@ -115,7 +115,7 @@ private:
     /** Compressed size of the addon package. */
     int         m_size;
     /** Rating for thsi addon package. */
-    mutable float       m_rating;
+    float       m_rating;
     /** Minimum version addon is included with. */
     std::string m_min_include_ver;
     /** Maximum version addon is included with. */
@@ -150,9 +150,6 @@ public:
     // ------------------------------------------------------------------------
     /** Returns the rating of an addon. */
     const float getRating() const {return m_rating; }
-    // ------------------------------------------------------------------------
-    /** Sets the rating of an addon. */
-    void setRating(const float rating) const {m_rating = rating; }
     // ------------------------------------------------------------------------
     /** Returns the type of the addon. */
     const std::string& getType() const { return m_type; }
@@ -296,6 +293,33 @@ public:
         // Fix compiler warning.
         return true;
     }   // operator<
+
+    // ------------------------------------------------------------------------
+    /** Compares two addons according to the sort order currently defined.
+     *  Comparison is done for sorting in descending order.
+     *  \param a The addon to compare this addon to.
+     */
+    bool operator>(const Addon &a) const
+    {
+        switch(m_sort_order)
+        {
+            case SO_DEFAULT:
+                if(testStatus(AS_FEATURED) &&
+                    !a.testStatus(AS_FEATURED))  return true;
+                if(!testStatus(AS_FEATURED) &&
+                    a.testStatus(AS_FEATURED))  return false;
+            // Otherwise fall through to name comparison!
+            case SO_NAME:
+                // m_id is the lower case name
+                return m_id > a.m_id;
+                break;
+            case SO_DATE:
+                return m_date < a.m_date;
+                break;
+        }   // switch
+        // Fix compiler warning.
+        return true;
+    }   // operator>
 
 };   // Addon
 

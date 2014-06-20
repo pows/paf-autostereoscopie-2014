@@ -19,6 +19,7 @@
 #ifndef HEADER_CONFIRM_DIALOG_HPP
 #define HEADER_CONFIRM_DIALOG_HPP
 
+#include "config/player.hpp"
 #include "guiengine/modaldialog.hpp"
 #include "utils/leak_check.hpp"
 
@@ -68,9 +69,8 @@ private:
     
     IConfirmDialogListener* m_listener;
     bool m_own_listener;
-    irr::core::stringw m_msg;
-    void doInit(MessageDialogType type, IConfirmDialogListener* listener,
-                bool own_listener);
+    void doInit(const irr::core::stringw &msg, MessageDialogType type, 
+                IConfirmDialogListener* listener, bool own_listener);
 
 public:
 
@@ -80,20 +80,20 @@ public:
       * \param If set to true, 'listener' will be owned by this dialog and deleted
       *        along with the dialog.
       */
-    MessageDialog(const irr::core::stringw &msg, MessageDialogType type,
+    MessageDialog(const irr::core::stringw &msg, MessageDialogType type, 
                   IConfirmDialogListener* listener, bool delete_listener);
     
     /**
       * Variant of MessageDialog where cancelling is not possible (i.e. just shows a message box with OK)
       * \param msg Message to display in the dialog
       */
-    MessageDialog(const irr::core::stringw &msg, bool from_queue = false);
+    MessageDialog(const irr::core::stringw &msg);
+
     
     ~MessageDialog();
     
     virtual void onEnterPressedInternal();
     virtual void onUpdate(float dt);
-    virtual void load();
 
     GUIEngine::EventPropagation processEvent(const std::string& eventSource);
 };

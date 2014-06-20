@@ -22,7 +22,6 @@
 
 #include "graphics/irr_driver.hpp"
 #include "graphics/material_manager.hpp"
-#include "graphics/stkmeshscenenode.hpp"
 #include "items/plunger.hpp"
 #include "items/projectile_manager.hpp"
 #include "karts/abstract_kart.hpp"
@@ -37,6 +36,26 @@
 
 #include <IMesh.h>
 
+const wchar_t* getPlungerString()
+{
+    const int PLUNGER_STRINGS_AMOUNT = 3;
+
+    RandomGenerator r;
+    const int id = r.get(PLUNGER_STRINGS_AMOUNT);
+
+    switch (id)
+    {
+        //I18N: shown when hit by plunger. %0 is the victim, %1 is the attacker
+        case 0: return _LTR("%0 bites %1's bait");
+        //I18N: shown when hit by plunger. %0 is the victim, %1 is the attacker
+        case 1: return _LTR("%1 latches onto %0 for a free ride");
+        //I18N: shown when hit by plunger. %0 is the victim, %1 is the attacker
+        case 2: return _LTR("%1 tests a tractor beam on %0");
+        default: assert(false); return L"";  // avoid warning about no return value
+    }
+}
+
+
 /** RubberBand constructor. It creates a simple quad and attaches it to the
  *  root(!) of the graph. It's easier this way to get the right coordinates
  *  than attaching it to the plunger or kart, and trying to find the other
@@ -48,7 +67,7 @@
 RubberBand::RubberBand(Plunger *plunger, AbstractKart *kart)
           : m_plunger(plunger), m_owner(kart)
 {
-    const video::SColor color(77, 179, 0, 0);
+    video::SColor color(77, 179, 0, 0);
     video::SMaterial m;
     m.AmbientColor    = color;
     m.DiffuseColor    = color;
@@ -59,21 +78,8 @@ RubberBand::RubberBand(Plunger *plunger, AbstractKart *kart)
     m_attached_state = RB_TO_PLUNGER;
     assert(m_buffer->getVertexType()==video::EVT_STANDARD);
 
-    // Set the vertex colors properly, as the new pipeline doesn't use the old light values
-    u32 i;
-    scene::IMeshBuffer * const mb = m_mesh->getMeshBuffer(0);
-    video::S3DVertex * const verts = (video::S3DVertex *) mb->getVertices();
-    const u32 max = mb->getVertexCount();
-    for (i = 0; i < max; i++)
-    {
-        verts[i].Color = color;
-    }
-
     updatePosition();
     m_node = irr_driver->addMesh(m_mesh);
-    irr_driver->applyObjectPassShader(m_node);
-    if (STKMeshSceneNode *stkm = dynamic_cast<STKMeshSceneNode *>(m_node))
-        stkm->setReloadEachFrame(true);
 #ifdef DEBUG
     std::string debug_name = m_owner->getIdent()+" (rubber-band)";
     m_node->setName(debug_name.c_str());
@@ -249,6 +255,15 @@ void RubberBand::hit(AbstractKart *kart_hit, const Vec3 *track_xyz)
 
         m_hit_kart       = kart_hit;
         m_attached_state = RB_TO_KART;
+
+        RaceGUIBase* gui = World::getWorld()->getRaceGUI();
+        irr::core::stringw hit_message;
+        hit_message += StringUtils::insertValues(getPlungerString(),
+                                                 core::stringw(kart_hit->getName()),
+                                                 core::stringw(m_owner->getName())
+                                                ).c_str();
+        gui->addMessage(translations->fribidize(hit_message), NULL, 3.0f,
+                        video::SColor(255, 255, 255, 255), false);
         return;
     }
 

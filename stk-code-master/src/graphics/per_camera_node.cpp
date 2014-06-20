@@ -24,7 +24,7 @@
 #include <IMeshSceneNode.h>
 
 PerCameraNode::PerCameraNode(scene::ISceneNode* parent, scene::ISceneManager* mgr, s32 id,
-                             scene::ICameraSceneNode* camera, scene::ISceneNode *node)
+                             scene::ICameraSceneNode* camera, scene::IMesh* mesh)
     : IDummyTransformationSceneNode(parent, mgr, id)
 {
 #ifdef DEBUG
@@ -33,10 +33,7 @@ PerCameraNode::PerCameraNode(scene::ISceneNode* parent, scene::ISceneManager* mg
 #endif
 
     m_camera = camera;
-
-    node->setParent(this);
-    m_child = node;
-
+    m_child = mgr->addMeshSceneNode(mesh, this);
     //m_child = mgr->addCubeSceneNode(0.5f, this, -1, core::vector3df(0,0,0), core::vector3df(0,0,0), core::vector3df(3.0f,0.2f,3.0f));
     //RelativeTransformationMatrix.setTranslation( core::vector3df(-0.5,-1,3) );
 

@@ -19,6 +19,7 @@
 #ifndef HEADER_CONFIRM_RES_DIALOG_HPP
 #define HEADER_CONFIRM_RES_DIALOG_HPP
 
+#include "config/player.hpp"
 #include "guiengine/modaldialog.hpp"
 
 /**

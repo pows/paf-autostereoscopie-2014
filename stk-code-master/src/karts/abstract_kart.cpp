@@ -78,7 +78,7 @@ void AbstractKart::reset()
 
 // ----------------------------------------------------------------------------
 /** Returns a name to be displayed for this kart. */
-core::stringw AbstractKart::getName() const
+const wchar_t* AbstractKart::getName() const
 {
     return m_kart_properties->getName();
 }   // getName;
@@ -111,7 +111,7 @@ void AbstractKart::setKartAnimation(AbstractKartAnimation *ka)
                           ka->getName().c_str());
         else   Log::debug("Abstract_Kart", "Setting kart animation to NULL.");
         if(m_kart_animation) Log::info("Abstract_Kart", "Current kart"
-                                       "animation is '%s'.",
+                                       "animation is '%s'.\n",
                                         m_kart_animation->getName().c_str());
         else   Log::debug("Abstract_Kart", "Current kart animation is NULL.");
     }

@@ -60,6 +60,10 @@ MaterialManager::~MaterialManager()
     m_materials.clear();
 }   // ~MaterialManager
 
+#if LIGHTMAP_VISUALISATION
+std::set<scene::IMeshBuffer*> g_processed;
+#endif
+
 //-----------------------------------------------------------------------------
 
 Material* MaterialManager::getMaterialFor(video::ITexture* t,
@@ -111,9 +115,9 @@ void MaterialManager::setAllMaterialFlags(video::ITexture* t,
 
     mb->getMaterial().ColorMaterial = video::ECM_DIFFUSE_AND_AMBIENT;
 
-    if (World::getWorld() != NULL)
+    if (World::getWorld() != NULL && World::getWorld()->getTrack() != NULL)
     {
-        mb->getMaterial().FogEnable = World::getWorld()->isFogEnabled();
+        mb->getMaterial().FogEnable = World::getWorld()->getTrack()->isFogEnabled();
     }
 
 
@@ -182,12 +186,10 @@ void MaterialManager::loadMaterial()
 {
     // Use temp material for reading, but then set the shared
     // material index later, so that these materials are not popped
-    //
-    addSharedMaterial(file_manager->getAssetChecked(FileManager::TEXTURE,
-                                                    "materials.xml", true));
-    std::string deprecated = file_manager->getAssetChecked(FileManager::TEXTURE,
-                                                           "deprecated/materials.xml");
-    if(deprecated.size()>0)
+    addSharedMaterial(file_manager->getTextureDir()+"materials.xml");
+    std::string deprecated = file_manager->getTextureDir()
+                           + "deprecated/materials.xml";
+    if(file_manager->fileExists(deprecated))
         addSharedMaterial(deprecated, true);
 
     // Save index of shared textures

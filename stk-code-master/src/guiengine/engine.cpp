@@ -485,15 +485,7 @@ namespace GUIEngine
 
  Used on divs, indicate by how many pixels to pad contents
 
-
- \n
- \subsection prop20 PROP_KEEP_SELECTION
- <em> Name in XML files: </em> \c "keep_selection"
-
- Used on lists, indicates that the list should keep showing the selected item
- even when it doesn't have the focus
-
-
+ 
  \n
  <HR>
  \section code Using the engine in code
@@ -656,26 +648,22 @@ namespace GUIEngine
 
 #include "guiengine/engine.hpp"
 
-#include "config/user_config.hpp"
+#include "io/file_manager.hpp"
 #include "graphics/irr_driver.hpp"
 #include "input/input_manager.hpp"
-#include "io/file_manager.hpp"
 #include "guiengine/event_handler.hpp"
 #include "guiengine/modaldialog.hpp"
 #include "guiengine/scalable_font.hpp"
 #include "guiengine/screen.hpp"
 #include "guiengine/skin.hpp"
 #include "guiengine/widget.hpp"
-#include "guiengine/dialog_queue.hpp"
 #include "modes/demo_world.hpp"
-#include "modes/cutscene_world.hpp"
 #include "modes/world.hpp"
 #include "states_screens/race_gui_base.hpp"
 
 #include <iostream>
 #include <assert.h>
 #include <irrlicht.h>
-#include "graphics/glwrap.hpp"
 
 using namespace irr::gui;
 using namespace irr::video;
@@ -687,11 +675,11 @@ namespace GUIEngine
     {
         IGUIEnvironment* g_env;
         Skin* g_skin = NULL;
-        ScalableFont *g_font;
-        ScalableFont *g_large_font;
-        ScalableFont *g_title_font;
-        ScalableFont *g_small_font;
-        ScalableFont *g_digit_font;
+        ScalableFont* g_font;
+        ScalableFont* g_large_font;
+        ScalableFont* g_title_font;
+        ScalableFont* g_small_font;
+        ScalableFont* g_digit_font;
 
         IrrlichtDevice* g_device;
         IVideoDriver* g_driver;
@@ -733,6 +721,20 @@ namespace GUIEngine
     std::vector<MenuMessage> gui_messages;
 
     // ------------------------------------------------------------------------
+    Screen* getScreenNamed(const char* name)
+    {
+        const int screenCount = g_loaded_screens.size();
+        for (int n=0; n<screenCount; n++)
+        {
+            if (g_loaded_screens[n].getName() == name)
+            {
+                return g_loaded_screens.get(n);
+            }
+        }
+        return NULL;
+    }   // getScreenNamed
+
+    // ------------------------------------------------------------------------
     void showMessage(const wchar_t* message, const float time)
     {
         // check for duplicates
@@ -748,15 +750,16 @@ namespace GUIEngine
     }   // showMessage
 
     // ------------------------------------------------------------------------
-    Widget* getFocusForPlayer(const unsigned int playerID)
+    Widget* getFocusForPlayer(const int playerID)
     {
+        assert(playerID >= 0);
         assert(playerID < MAX_PLAYER_COUNT);
 
         return g_focus_for_player[playerID];
     }   // getFocusForPlayer
 
     // ------------------------------------------------------------------------
-    void focusNothingForPlayer(const unsigned int playerID)
+    void focusNothingForPlayer(const int playerID)
     {
         Widget* focus = getFocusForPlayer(playerID);
         if (focus != NULL) focus->unsetFocusForPlayer(playerID);
@@ -765,9 +768,10 @@ namespace GUIEngine
     }   // focusNothingForPlayer
 
     // ------------------------------------------------------------------------
-    bool isFocusedForPlayer(const Widget* w, const unsigned int playerID)
+    bool isFocusedForPlayer(const Widget* w, const int playerID)
     {
         assert(w != NULL);
+        assert(playerID >= 0);
         assert(playerID < MAX_PLAYER_COUNT);
 
         // If no focus
@@ -795,14 +799,13 @@ namespace GUIEngine
     {
         return Private::small_font_height;
     }   // getSmallFontHeight
- 
+
     // ------------------------------------------------------------------------
     int getLargeFontHeight()
-   {
-
+    {
         return Private::large_font_height;
     }   // getSmallFontHeight
-        
+
     // ------------------------------------------------------------------------
     void clear()
     {
@@ -832,7 +835,6 @@ namespace GUIEngine
             {
                 widget->update(dt);
             }
-            if (state == GUIEngine::MENU) DialogQueue::get()->update();
         }
 
         // Hack : on the first frame, irrlicht processes all events that have been queued
@@ -914,25 +916,6 @@ namespace GUIEngine
     }   // addScreenToList
 
     // ------------------------------------------------------------------------
-
-    void removeScreen(const char* name)
-    {
-        const int screen_amount = g_loaded_screens.size();
-        for(int n=0; n<screen_amount; n++)
-        {
-            if (g_loaded_screens[n].getName() == name)
-            {
-                g_current_screen = g_loaded_screens.get(n);
-                g_current_screen->unload();
-                delete g_current_screen;
-                g_current_screen = NULL;
-                g_loaded_screens.remove(n);
-                break;
-            }
-        }
-    }
-
-    // ------------------------------------------------------------------------
     void reshowCurrentScreen()
     {
         needsUpdate.clearWithoutDeleting();
@@ -951,7 +934,7 @@ namespace GUIEngine
         //if (g_skin != NULL) delete g_skin;
         g_skin = NULL;
 
-        for (unsigned int i=0; i<g_loaded_screens.size(); i++)
+        for (int i=0; i<g_loaded_screens.size(); i++)
         {
             g_loaded_screens[i].unload();
         }
@@ -1001,7 +984,7 @@ namespace GUIEngine
         g_driver = driver_a;
         g_state_manager = state_manager;
 
-        for (unsigned int n=0; n<MAX_PLAYER_COUNT; n++)
+        for (int n=0; n<MAX_PLAYER_COUNT; n++)
         {
             g_focus_for_player[n] = NULL;
         }
@@ -1049,33 +1032,26 @@ namespace GUIEngine
         const int screen_width = irr_driver->getFrameSize().Width;
         const int screen_height = irr_driver->getFrameSize().Height;
         float scale = std::max(0, screen_width - 640)/564.0f;
-
-        // attempt to compensate for small screens
-        if (screen_width < 1200) scale = std::max(0, screen_width - 640) / 750.0f;
-        if (screen_width < 900 || screen_height < 700) scale = std::min(scale, 0.05f);
-
-        Log::info("GUIEngine", "scale: %f", scale);
+        if (screen_height < 700) scale = std::min(scale, 0.25f); // attempt to compensate for small screens
 
         float normal_text_scale = 0.7f + 0.2f*scale;
         float title_text_scale = 0.2f + 0.2f*scale;
 
         ScalableFont* sfont =
             new ScalableFont(g_env,
-                            file_manager->getAssetChecked(FileManager::FONT,
-                                                          "StkFont.xml",true) );
+                            file_manager->getFontFile("StkFont.xml").c_str());
         sfont->setScale(normal_text_scale);
         sfont->setKerningHeight(-5);
         g_font = sfont;
 
         ScalableFont* digit_font =
             new ScalableFont(g_env,
-                             file_manager->getAssetChecked(FileManager::FONT,
-                                                           "BigDigitFont.xml",true));
+                             file_manager->getFontFile("BigDigitFont.xml").c_str());
         digit_font->lazyLoadTexture(0); // make sure the texture is loaded for this one
-        digit_font->setMonospaceDigits(true);
         g_digit_font = digit_font;
 
         Private::font_height = g_font->getDimension( L"X" ).Height;
+
 
         ScalableFont* sfont_larger = sfont->getHollowCopy();
         sfont_larger->setScale(normal_text_scale*1.4f);
@@ -1095,9 +1071,7 @@ namespace GUIEngine
 
         ScalableFont* sfont2 =
             new ScalableFont(g_env,
-                             file_manager->getAssetChecked(FileManager::FONT,
-                                                           "title_font.xml",
-                                                           true)             );
+                          file_manager->getFontFile("title_font.xml").c_str());
         sfont2->m_fallback_font = sfont;
         // Because the fallback font is much smaller than the title font:
         sfont2->m_fallback_font_scale = 4.0f;
@@ -1195,7 +1169,7 @@ namespace GUIEngine
             if (ModalDialog::isADialogActive())
                 ModalDialog::getCurrent()->onUpdate(dt);
             else
-                getCurrentScreen()->onUpdate(elapsed_time);
+                getCurrentScreen()->onUpdate(elapsed_time, g_driver);
         }
         else
         {
@@ -1210,12 +1184,6 @@ namespace GUIEngine
             }
         }
 
-
-        if (gamestate == INGAME_MENU && dynamic_cast<CutsceneWorld*>(World::getWorld()) != NULL)
-        {
-            RaceGUIBase* rg = World::getWorld()->getRaceGUI();
-            if (rg != NULL) rg->renderGlobal(elapsed_time);
-        }
 
         if (gamestate == MENU || gamestate == INGAME_MENU)
         {
@@ -1243,7 +1211,7 @@ namespace GUIEngine
                                 core::dimension2d<s32>(screen_size.Width,
                                                        text_height) );
 
-                    GL32_draw2DRectangle(SColor(255,252,248,230),
+                    Private::g_driver->draw2DRectangle(SColor(255,252,248,230),
                                                        msgRect);
                     Private::g_font->draw((*it).m_message.c_str(),
                                           msgRect,
@@ -1282,6 +1250,7 @@ namespace GUIEngine
     }   // render
 
     // -----------------------------------------------------------------------
+
     std::vector<irr::video::ITexture*> g_loading_icons;
 
     void renderLoading(bool clearIcons)
@@ -1290,8 +1259,7 @@ namespace GUIEngine
 
         g_skin->drawBgImage();
         ITexture* loading =
-            irr_driver->getTexture(file_manager->getAsset(FileManager::GUI,
-                                                          "loading.png"));
+            irr_driver->getTexture(file_manager->getGUIDir()+"loading.png");
 
         if(!loading)
         {
@@ -1315,7 +1283,7 @@ namespace GUIEngine
         const core::rect< s32 > source_area =
             core::rect< s32 >(0, 0, texture_w, texture_h);
 
-        draw2DImage( loading, dest_area, source_area,
+        GUIEngine::getDriver()->draw2DImage( loading, dest_area, source_area,
                                             0 /* no clipping */, 0,
                                             true /* alpha */);
 
@@ -1335,7 +1303,7 @@ namespace GUIEngine
         int y = screen_h - icon_size - ICON_MARGIN;
         for (int n=0; n<icon_count; n++)
         {
-            draw2DImage(g_loading_icons[n],
+            g_driver->draw2DImage(g_loading_icons[n],
                               core::rect<s32>(x, y, x+icon_size, y+icon_size),
                               core::rect<s32>(core::position2d<s32>(0, 0),
                                               g_loading_icons[n]->getSize()),

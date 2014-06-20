@@ -18,9 +18,6 @@
 
 #include "items/powerup.hpp"
 
-#include "achievements/achievement_info.hpp"
-#include "config/player_manager.hpp"
-
 #include "audio/sfx_base.hpp"
 #include "audio/sfx_manager.hpp"
 #include "config/stk_config.hpp"
@@ -32,10 +29,63 @@
 #include "karts/controller/controller.hpp"
 #include "karts/kart_properties.hpp"
 #include "modes/world.hpp"
+#include "network/network_manager.hpp"
+#include "network/race_state.hpp"
 #include "physics/triangle_mesh.hpp"
 #include "tracks/track.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/log.hpp" //TODO: remove after debugging is done
+
+const wchar_t* getAnchorString()
+{
+    const int ANCHOR_STRINGS_COUNT = 3;
+
+    RandomGenerator r;
+    const int id = r.get(ANCHOR_STRINGS_COUNT);
+
+    switch (id)
+    {
+        //I18N: shown when anchor applied. %s is the victim.
+        case 0: return _LTR("Arrr, the %s dropped anchor, Captain!");
+        case 1: return _LTR("%s pays the next round of grog!");
+        case 2: return _LTR("%s is a mighty pirate!");
+        default: assert(false); return L"";   // avoid compiler warning.
+    }
+}   // getAnchorString
+
+//-----------------------------------------------------------------------------
+const wchar_t* getParachuteString()
+{
+    const int PARACHUTE_STRINGS_COUNT = 3;
+
+    RandomGenerator r;
+    const int id = r.get(PARACHUTE_STRINGS_COUNT);
+
+    switch (id)
+    {
+        case 0: return _("Geronimo!!!"); // Parachutist shout
+        case 1: return _("The Space Shuttle has landed!");
+        case 2: return _("Do you want to fly kites?");
+        default: assert(false); return  L"";  // avoid compiler warning
+    }
+}   // getParachuteString
+
+//-----------------------------------------------------------------------------
+const wchar_t* getSwapperString()
+{
+    const int SWAPPER_STRINGS_COUNT = 3;
+
+    RandomGenerator r;
+    const int id = r.get(SWAPPER_STRINGS_COUNT);
+
+    switch (id)
+    {
+        case 0: return _("Magic, son. Nothing else in the world smells like that.");
+        case 1: return _("A wizard did it!");
+        case 2: return _("Banana? Box? Banana? Box? Banana? Box?");
+        default: assert(false); return L"";  // avoid compiler warning
+    }
+}   // getSwapperString
 
 //-----------------------------------------------------------------------------
 /** Constructor, stores the kart to which this powerup belongs.
@@ -173,14 +223,6 @@ void  Powerup::adjustSound()
  */
 void Powerup::use()
 {
-    // The player gets an achievement point for using a powerup
-    StateManager::ActivePlayer * player = m_owner->getController()->getPlayer();
-    if (m_type != PowerupManager::POWERUP_NOTHING &&
-        player != NULL && player->getConstProfile() == PlayerManager::getCurrentPlayer())
-    {
-        PlayerManager::increaseAchievement(AchievementInfo::ACHIEVE_POWERUP_LOVER, "poweruplover");
-    }
-
     // Play custom kart sound when collectible is used //TODO: what about the bubble gum?
     if (m_type != PowerupManager::POWERUP_NOTHING &&
         m_type != PowerupManager::POWERUP_SWATTER &&
@@ -197,6 +239,7 @@ void Powerup::use()
 
     m_number--;
     World *world = World::getWorld();
+    RaceGUIBase* gui = world->getRaceGUI();
     switch (m_type)
     {
     case PowerupManager::POWERUP_ZIPPER:
@@ -207,6 +250,9 @@ void Powerup::use()
             ItemManager::get()->switchItems();
             m_sound_use->position(m_owner->getXYZ());
             m_sound_use->play();
+
+            gui->addMessage(getSwapperString(), NULL, 3.0f,
+                            video::SColor(255, 255, 255, 255), false);
             break;
         }
     case PowerupManager::POWERUP_CAKE:
@@ -248,7 +294,7 @@ void Powerup::use()
             m_sound_use->play();
 
             pos.setY(hit_point.getY()-0.05f);
-
+        
             ItemManager::get()->newItem(Item::ITEM_BUBBLEGUM, pos, normal, m_owner);
         }
         else // if the kart is looking forward, use the bubblegum as a shield
@@ -315,6 +361,11 @@ void Powerup::use()
                     m_sound_use->position(m_owner->getXYZ());
 
                 m_sound_use->play();
+
+                irr::core::stringw anchor_message;
+                anchor_message += StringUtils::insertValues(getAnchorString(), core::stringw(kart->getName()));
+                gui->addMessage(translations->fribidize(anchor_message), NULL, 3.0f,
+                                video::SColor(255, 255, 255, 255), false);
                 break;
             }
         }
@@ -356,6 +407,9 @@ void Powerup::use()
             else if(player_kart)
                 m_sound_use->position(player_kart->getXYZ());
             m_sound_use->play();
+
+            gui->addMessage(getParachuteString(), NULL, 3.0f,
+                            video::SColor(255, 255, 255, 255), false);
         }
         break;
 
@@ -404,21 +458,13 @@ void Powerup::hitBonusBox(const Item &item, int add_info)
 
     // Check if two bouncing balls are collected less than getRubberBallTimer()
     //seconds apart. If yes, then call getRandomPowerup again. If no, then break.
-    if (add_info<0)
+    for(int i=0; i<20; i++)
     {
-        for(int i=0; i<20; i++)
-        {
-            new_powerup = powerup_manager->getRandomPowerup(position, &n);
-            if(new_powerup != PowerupManager::POWERUP_RUBBERBALL ||
-                ( World::getWorld()->getTime() - powerup_manager->getBallCollectTime()) >
-                  RubberBall::getTimeBetweenRubberBalls() )
-                break;
-        }
-    }
-    else // set powerup manually
-    {
-        new_powerup = (PowerupManager::PowerupType)((add_info>>4)&0x0f); // highest 4 bits for the type
-        n = (add_info&0x0f); // last 4 bits for the amount
+        new_powerup = powerup_manager->getRandomPowerup(position, &n);
+        if(new_powerup != PowerupManager::POWERUP_RUBBERBALL ||
+            ( World::getWorld()->getTime() - powerup_manager->getBallCollectTime()) >
+              RubberBall::getTimeBetweenRubberBalls() )
+            break;
     }
 
     if(new_powerup == PowerupManager::POWERUP_RUBBERBALL)

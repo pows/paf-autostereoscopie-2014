@@ -210,13 +210,11 @@ CIrrDeviceLinux::~CIrrDeviceLinux()
 }
 
 
-#if defined(_IRR_COMPILE_WITH_X11_)
-static bool XErrorSignaled = false;
+#if defined(_IRR_COMPILE_WITH_X11_) && defined(_DEBUG)
 int IrrPrintXError(Display *display, XErrorEvent *event)
 {
 	char msg[256];
 	char msg2[256];
-	XErrorSignaled = true;
 
 	snprintf(msg, 256, "%d", event->request_code);
 	XGetErrorDatabaseText(display, "XRequest", msg, "unknown", msg2, 256);
@@ -264,7 +262,6 @@ bool CIrrDeviceLinux::switchToFullscreen(bool reset)
 		// enumerate video modes
 		s32 modeCount;
 		XF86VidModeModeInfo** modes;
-		float refresh_rate;
 
 		XF86VidModeGetAllModeLines(display, screennr, &modeCount, &modes);
 
@@ -272,37 +269,13 @@ bool CIrrDeviceLinux::switchToFullscreen(bool reset)
 		for (s32 i = 0; i<modeCount; ++i)
 		{
 			if (bestMode==-1 && modes[i]->hdisplay >= Width && modes[i]->vdisplay >= Height)
-			{
-				float pixels_per_second = modes[i]->dotclock * 1000.0;
-				float pixels_per_frame = modes[i]->htotal * modes[i]->vtotal;
-				refresh_rate = pixels_per_second / pixels_per_frame;
 				bestMode = i;
-			}
-			else if (bestMode!=-1 &&
-					modes[i]->hdisplay == modes[bestMode]->hdisplay &&
-					modes[i]->vdisplay == modes[bestMode]->vdisplay)
-			{
-				float pixels_per_second = modes[i]->dotclock * 1000.0;
-				float pixels_per_frame = modes[i]->htotal * modes[i]->vtotal;
-				float refresh_rate_tmp = pixels_per_second / pixels_per_frame;
-
-				if (refresh_rate_tmp > refresh_rate)
-				{
-					refresh_rate = refresh_rate_tmp;
-					bestMode = i;
-				}
-			}
 			else if (bestMode!=-1 &&
 					modes[i]->hdisplay >= Width &&
 					modes[i]->vdisplay >= Height &&
 					modes[i]->hdisplay <= modes[bestMode]->hdisplay &&
 					modes[i]->vdisplay <= modes[bestMode]->vdisplay)
-			{
-				float pixels_per_second = modes[i]->dotclock * 1000.0;
-				float pixels_per_frame = modes[i]->htotal * modes[i]->vtotal;
-				refresh_rate = pixels_per_second / pixels_per_frame;
 				bestMode = i;
-			}
 		}
 		if (bestMode != -1)
 		{
@@ -393,71 +366,14 @@ void IrrPrintXGrabError(int grabResult, const c8 * grabCommand )
 }
 #endif
 
-static GLXContext getMeAGLContext(Display *display, GLXFBConfig glxFBConfig)
-{
-	GLXContext Context;
-	int compat33ctx[] =
-		{
-			GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-			GLX_CONTEXT_MINOR_VERSION_ARB, 3,
-			GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-			GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
-			None
-		};
-	int core33ctx[] =
-		{
-			GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-			GLX_CONTEXT_MINOR_VERSION_ARB, 3,
-			GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
-			GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
-			None
-		};
-	int core31ctx[] =
-		{
-			GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-			GLX_CONTEXT_MINOR_VERSION_ARB, 1,
-			GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
-			GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
-			None
-		};
-	int legacyctx[] =
-		{
-			GLX_CONTEXT_MAJOR_VERSION_ARB, 2,
-			GLX_CONTEXT_MINOR_VERSION_ARB, 1,
-			None
-		};
-	PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB = 0;
-	glXCreateContextAttribsARB = (PFNGLXCREATECONTEXTATTRIBSARBPROC)
-						glXGetProcAddressARB( (const GLubyte *) "glXCreateContextAttribsARB" );
-
-	// create compat 3.3 context (for proprietary drivers)
-	Context = glXCreateContextAttribsARB(display, glxFBConfig, 0, True, compat33ctx);
-	if (!XErrorSignaled)
-		return Context;
-
-	XErrorSignaled = false;
-	// create core 3.3 context (for mesa)
-	Context = glXCreateContextAttribsARB(display, glxFBConfig, 0, True, core33ctx);
-	if (!XErrorSignaled)
-		return Context;
-
-	XErrorSignaled = false;
-	// create core 3.1 context (for older mesa)
-	Context = glXCreateContextAttribsARB(display, glxFBConfig, 0, True, core31ctx);
-	if (!XErrorSignaled)
-		return Context;
-
-	XErrorSignaled = false;
-	// fall back to legacy context
-	Context = glXCreateContextAttribsARB(display, glxFBConfig, 0, True, legacyctx);
-	return Context;
-}
 
 bool CIrrDeviceLinux::createWindow()
 {
 #ifdef _IRR_COMPILE_WITH_X11_
+#ifdef _DEBUG
 	os::Printer::log("Creating X window...", ELL_INFORMATION);
 	XSetErrorHandler(IrrPrintXError);
+#endif
 
 	display = XOpenDisplay(0);
 	if (!display)
@@ -746,21 +662,9 @@ bool CIrrDeviceLinux::createWindow()
 
 	if (!CreationParams.WindowId)
 	{
-		Atom *list;
-		Atom type;
-		int form;
-		unsigned long remain, len;
-
-		Atom WMCheck = XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", false);
-		Status s = XGetWindowProperty(display, DefaultRootWindow(display),
-									  WMCheck, 0L, 1L, False, XA_WINDOW,
-									  &type, &form, &len, &remain,
-									  (unsigned char **)&list);
-
-		bool netWM = (s == Success) && len;
-		attributes.override_redirect = !netWM && CreationParams.Fullscreen;
-
 		// create new Window
+		// Remove window manager decoration in fullscreen
+		attributes.override_redirect = CreationParams.Fullscreen;
 		window = XCreateWindow(display,
 				RootWindow(display, visual->screen),
 				0, 0, Width, Height, 0, visual->depth,
@@ -772,48 +676,16 @@ bool CIrrDeviceLinux::createWindow()
 		Atom wmDelete;
 		wmDelete = XInternAtom(display, wmDeleteWindow, True);
 		XSetWMProtocols(display, window, &wmDelete, 1);
-
 		if (CreationParams.Fullscreen)
 		{
-			if (netWM)
-			{
-				// Workaround for Gnome which sometimes creates window smaller than display
-				XSizeHints *hints = XAllocSizeHints();
-				hints->flags=PMinSize;
-				hints->min_width=Width;
-				hints->min_height=Height;
-				XSetWMNormalHints(display, window, hints);
-				XFree(hints);
-
-				// Set the fullscreen mode via the window manager. This allows alt-tabing, volume hot keys & others.
-				// Get the needed atom from there freedesktop names
-				Atom WMStateAtom = XInternAtom(display, "_NET_WM_STATE", true);
-				Atom WMFullscreenAtom = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", true);
-				// Set the fullscreen property
-				XChangeProperty(display, window, WMStateAtom, XA_ATOM, 32, PropModeReplace, reinterpret_cast<unsigned char *>(& WMFullscreenAtom), 1);
-
-				// Notify the root window
-				XEvent xev = {0}; // The event should be filled with zeros before setting its attributes
-
-				xev.type = ClientMessage;
-				xev.xclient.window = window;
-				xev.xclient.message_type = WMStateAtom;
-				xev.xclient.format = 32;
-				xev.xclient.data.l[0] = 1;
-				xev.xclient.data.l[1] = WMFullscreenAtom;
-				XSendEvent(display, DefaultRootWindow(display), false, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
-			}
-			else
-			{
-				XSetInputFocus(display, window, RevertToParent, CurrentTime);
-				int grabKb = XGrabKeyboard(display, window, True, GrabModeAsync,
-					GrabModeAsync, CurrentTime);
-				IrrPrintXGrabError(grabKb, "XGrabKeyboard");
-				int grabPointer = XGrabPointer(display, window, True, ButtonPressMask,
-					GrabModeAsync, GrabModeAsync, window, None, CurrentTime);
-				IrrPrintXGrabError(grabPointer, "XGrabPointer");
-				XWarpPointer(display, None, window, 0, 0, 0, 0, 0, 0);
-			}
+			XSetInputFocus(display, window, RevertToParent, CurrentTime);
+			int grabKb = XGrabKeyboard(display, window, True, GrabModeAsync,
+				GrabModeAsync, CurrentTime);
+			IrrPrintXGrabError(grabKb, "XGrabKeyboard");
+			int grabPointer = XGrabPointer(display, window, True, ButtonPressMask,
+				GrabModeAsync, GrabModeAsync, window, None, CurrentTime);
+			IrrPrintXGrabError(grabPointer, "XGrabPointer");
+			XWarpPointer(display, None, window, 0, 0, 0, 0, 0, 0);
 		}
 	}
 	else
@@ -852,7 +724,8 @@ bool CIrrDeviceLinux::createWindow()
 		glxWin=glXCreateWindow(display,glxFBConfig,window,NULL);
 		if (glxWin)
 		{
-			Context = getMeAGLContext(display, glxFBConfig);
+			// create glx context
+			Context = glXCreateNewContext(display, glxFBConfig, GLX_RGBA_TYPE, NULL, True);
 			if (Context)
 			{
 				if (!glXMakeContextCurrent(display, glxWin, glxWin, Context))

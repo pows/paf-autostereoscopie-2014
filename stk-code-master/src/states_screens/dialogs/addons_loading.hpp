@@ -25,7 +25,7 @@
 #include "guiengine/modaldialog.hpp"
 #include "utils/synchronised.hpp"
 
-namespace Online { class HTTPRequest; }
+class Request;
 
 /**
   * \ingroup states_screens
@@ -53,15 +53,18 @@ private:
 
     /** A pointer to the download request, which gives access
      *  to the progress of a download. */
-    Online::HTTPRequest *m_download_request;
+    Request *m_download_request;
 
 public:
-    AddonsLoading(const std::string &addon_name);
-
-   ~AddonsLoading();
-
+            AddonsLoading(const float percent_width, 
+                          const float percent_height,
+                          const std::string &addon_name);
+    
+           ~AddonsLoading();
     virtual GUIEngine::EventPropagation processEvent(const std::string& event_source);
+    
     virtual void beforeAddingWidgets();
+    
     virtual void init();
     
     /** This function is called by the GUI, all the frame (or somthing like
@@ -69,7 +72,6 @@ public:
      *  and do the necessary.
      * */
     void onUpdate(float delta);
-    void voteClicked();
     
 };   // AddonsLoading
 

@@ -43,6 +43,7 @@
 #include "karts/max_speed.hpp"
 #include "karts/rescue_animation.hpp"
 #include "modes/linear_world.hpp"
+#include "network/network_manager.hpp"
 #include "race/race_manager.hpp"
 #include "states_screens/race_result_gui.hpp"
 #include "tracks/quad_graph.hpp"
@@ -201,6 +202,18 @@ void EndController::update(float dt)
     /*Response handling functions*/
     handleSteering(dt);
     handleRescue(dt);
+
+    const Material *m = m_kart->getMaterial();
+    // If the AI is on a zipper material, disable any AI related slowdown,
+    // since otherwise it might happen that a jump is too short.
+    if(m && m->isZipper())
+        m_kart->setSlowdown(MaxSpeed::MS_DECREASE_AI,
+                            /*max_speed_fraction*/1.0,
+                            /*fade_in_time*/0.0f);
+    else
+        m_kart->setSlowdown(MaxSpeed::MS_DECREASE_AI,
+                            /*max_speed_fraction*/0.3f, /*fade_in_time*/2.0f);
+
 }   // update
 
 //-----------------------------------------------------------------------------
@@ -218,7 +231,7 @@ void EndController::handleSteering(float dt)
         const int next = m_next_node_index[m_track_node];
         target_point = QuadGraph::get()->getQuadOfNode(next).getCenter();
 #ifdef AI_DEBUG
-        Log::debug("end_controller.cpp", "- Outside of road: steer to center point.");
+        Log::debug("end_controller.cpp", "- Outside of road: steer to center point.\n");
 #endif
     }
     else

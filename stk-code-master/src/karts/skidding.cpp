@@ -21,8 +21,6 @@
 #ifdef SKID_DEBUG
 #  include "graphics/show_curve.hpp"
 #endif
-#include "achievements/achievement_info.hpp"
-#include "config/player_manager.hpp"
 #include "karts/kart.hpp"
 #include "karts/kart_gfx.hpp"
 #include "karts/kart_properties.hpp"
@@ -125,7 +123,7 @@ void Skidding::updateSteering(float steer, float dt)
         else
         {
             reset();
-        }
+        }        
         break;
     case SKID_ACCUMULATE_RIGHT:
         {
@@ -182,12 +180,14 @@ float Skidding::getSteeringWhenSkidding(float steering) const
             float f = (steering - m_skid_reduce_turn_min)
                    /  m_skid_reduce_turn_delta;
             return f *2.0f-1.0f;
+            break;
         }
     case SKID_ACCUMULATE_LEFT:
         {
             float f = (steering + m_skid_reduce_turn_min)
                     / m_skid_reduce_turn_delta;
             return 2.0f * f +1.0f;
+            break;
         }
     }   // switch m_skid_state
     return 0;   // keep compiler quiet
@@ -212,7 +212,7 @@ void Skidding::update(float dt, bool is_on_ground,
     }
 
     // No skidding backwards or while stopped
-    if(m_kart->getSpeed() < 0.001f &&
+    if(m_kart->getSpeed() < 0.001f && 
        m_skid_state != SKID_NONE && m_skid_state != SKID_BREAK)
     {
         m_skid_state = SKID_BREAK;
@@ -414,12 +414,6 @@ void Skidding::update(float dt, bool is_on_ground,
                                              bonus_speed, bonus_speed,
                                              bonus_force, bonus_time,
                                              /*fade-out-time*/ 1.0f);
-                    
-                    StateManager::ActivePlayer *c = m_kart->getController()->getPlayer();
-                    if (c && c->getConstProfile() == PlayerManager::getCurrentPlayer())
-                    {
-                        PlayerManager::increaseAchievement(AchievementInfo::ACHIEVE_SKIDDING, "skidding");
-                    }
                 }
                 else {
                     m_kart->getKartGFX()

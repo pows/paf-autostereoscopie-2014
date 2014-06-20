@@ -158,6 +158,9 @@ private:
     /** The overall width of the table. */
     unsigned int               m_table_width;
 
+    /** GP Progress text */
+    unsigned int               m_gp_progress_x;
+
     /** The font to use. */
     gui::ScalableFont         *m_font;
 
@@ -184,30 +187,16 @@ private:
 
     unsigned int m_width_all_points;
 
-    int m_max_tracks;
-    int m_start_track;
-    int m_end_track;
-    int m_sshot_height;
-
-    PtrVector<GUIEngine::Widget, HOLD>  m_gp_progress_widgets;
-
-    static const int SSHOT_SEPARATION = 10;
-
     void displayOneEntry(unsigned int x, unsigned int y,
                          unsigned int n, bool display_points);
     void determineTableLayout();
     void determineGPLayout();
     void enableAllButtons();
     void enableGPProgress();
-    void addGPProgressWidget(GUIEngine::Widget* widget);
     void displayGPProgress();
     void cleanupGPProgress();
     void displayHighScores();
     void displaySoccerResults();
-    void displayScreenShots();
-
-    int  getFontHeight () const;
-
 public:
 
                  RaceResultGUI();
@@ -235,7 +224,7 @@ public:
     /** No kart specific view needs to be rendered in the result gui. */
     virtual void renderPlayerView(const AbstractKart *kart) {}
 
-    virtual void onUpdate(float dt) OVERRIDE;
+    virtual void onUpdate(float dt, irr::video::IVideoDriver*) OVERRIDE;
 
     /** No more messages need to be displayed, but the function might still be
      *  called (e.g. 'new lap' message if the end controller is used for more

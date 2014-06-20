@@ -26,7 +26,6 @@
 #include "items/item_manager.hpp"
 #include "physics/physical_object.hpp"
 #include "race/race_manager.hpp"
-#include "utils/helpers.hpp"
 
 
 /** A track object: any additional object on the track. This object implements
@@ -38,10 +37,9 @@
  *                 model, enable/disable status, timer information.
  * \param lod_node Lod node (defaults to NULL).
  */
-TrackObject::TrackObject(const XMLNode &xml_node, scene::ISceneNode* parent,
-                         ModelDefinitionLoader& model_def_loader)
+TrackObject::TrackObject(const XMLNode &xml_node, LODNode* lod_node)
 {
-    init(xml_node, parent, model_def_loader);
+    init(xml_node, lod_node);
 }
 
 // ----------------------------------------------------------------------------
@@ -62,7 +60,7 @@ TrackObject::TrackObject(const core::vector3df& xyz, const core::vector3df& hpr,
     m_enabled    = true;
     m_presentation = NULL;
     m_animator = NULL;
-    m_physical_object = NULL;
+    m_rigid_body = NULL;
     m_interaction = interaction;
 
     m_presentation = presentation;
@@ -70,7 +68,7 @@ TrackObject::TrackObject(const core::vector3df& xyz, const core::vector3df& hpr,
     if (m_interaction != "ghost" && m_interaction != "none" &&
         physics_settings )
     {
-        m_physical_object = new PhysicalObject(is_dynamic,
+        m_rigid_body = new PhysicalObject(is_dynamic,
                                           *physics_settings,
                                           this);
     }
@@ -79,8 +77,8 @@ TrackObject::TrackObject(const core::vector3df& xyz, const core::vector3df& hpr,
 }   // TrackObject
 
 // ----------------------------------------------------------------------------
-void TrackObject::init(const XMLNode &xml_node, scene::ISceneNode* parent,
-                       ModelDefinitionLoader& model_def_loader)
+
+void TrackObject::init(const XMLNode &xml_node, LODNode* lod_node)
 {
     m_init_xyz   = core::vector3df(0,0,0);
     m_init_hpr   = core::vector3df(0,0,0);
@@ -89,7 +87,7 @@ void TrackObject::init(const XMLNode &xml_node, scene::ISceneNode* parent,
     m_presentation = NULL;
     m_animator = NULL;
 
-    m_physical_object = NULL;
+    m_rigid_body = NULL;
 
     xml_node.get("xyz",     &m_init_xyz  );
     xml_node.get("hpr",     &m_init_hpr  );
@@ -100,17 +98,8 @@ void TrackObject::init(const XMLNode &xml_node, scene::ISceneNode* parent,
     xml_node.get("interaction", &m_interaction);
     xml_node.get("lod_group", &m_lod_group);
 
-    bool lod_instance = false;
-    xml_node.get("lod_instance", &lod_instance);
-
-    bool instancing = false;
-    xml_node.get("instancing", &instancing);
-
     m_soccer_ball = false;
     xml_node.get("soccer_ball", &m_soccer_ball);
-    
-    m_garage = false;
-    m_distance = 0;
 
     std::string type;
     xml_node.get("type",    &type );
@@ -121,35 +110,22 @@ void TrackObject::init(const XMLNode &xml_node, scene::ISceneNode* parent,
     if (xml_node.getName() == "particle-emitter")
     {
         m_type = "particle-emitter";
-        m_presentation = new TrackObjectPresentationParticles(xml_node, parent);
-    }
-    else if (xml_node.getName() == "light")
-    {
-        m_type = "light";
-        m_presentation = new TrackObjectPresentationLight(xml_node, parent);
+        m_presentation = new TrackObjectPresentationParticles(xml_node);
     }
     else if (type == "sfx-emitter")
     {
         // FIXME: at this time sound emitters are just disabled in multiplayer
         //        otherwise the sounds would be constantly heard
         if (race_manager->getNumLocalPlayers() < 2)
-            m_presentation = new TrackObjectPresentationSound(xml_node, parent);
+            m_presentation = new TrackObjectPresentationSound(xml_node);
     }
     else if (type == "action-trigger")
     {
-        std::string m_action;
-        xml_node.get("action", &m_action);
-        xml_node.get("distance", &m_distance);
-        if (m_action == "garage")
-        {
-            m_garage = true;
-        }
-
         m_presentation = new TrackObjectPresentationActionTrigger(xml_node);
     }
     else if (type == "billboard")
     {
-        m_presentation = new TrackObjectPresentationBillboard(xml_node, parent);
+        m_presentation = new TrackObjectPresentationBillboard(xml_node);
     }
     else if (type=="cutscene_camera")
     {
@@ -157,69 +133,23 @@ void TrackObject::init(const XMLNode &xml_node, scene::ISceneNode* parent,
     }
     else
     {
-        scene::ISceneNode *glownode = NULL;
-
-        if (instancing)
+        if (lod_node != NULL)
         {
             m_type = "lod";
-            TrackObjectPresentationInstancing* instancing_node =
-                new TrackObjectPresentationInstancing(xml_node, parent, model_def_loader);
-            m_presentation = instancing_node;
-        }
-        else if (lod_instance)
-        {
-            m_type = "lod";
-            TrackObjectPresentationLOD* lod_node =
-                new TrackObjectPresentationLOD(xml_node, parent, model_def_loader);
-            m_presentation = lod_node;
-
-            glownode = ((LODNode*)lod_node->getNode())->getAllNodes()[0];
+            m_presentation = new TrackObjectPresentationLOD(xml_node, lod_node);
         }
         else
         {
             m_type = "mesh";
             m_presentation = new TrackObjectPresentationMesh(xml_node,
-                                                             m_enabled,
-                                                             parent);
-            glownode = ((TrackObjectPresentationMesh *) m_presentation)->getNode();
+                                                             m_enabled);
         }
 
-        std::string render_pass;
-        xml_node.get("renderpass", &render_pass);
-
-        if (m_interaction != "ghost" && m_interaction != "none" &&
-            render_pass != "skybox"                                     )
+        if (m_interaction != "ghost" && m_interaction != "none")
         {
-            m_physical_object = PhysicalObject::fromXML(type == "movable",
+            m_rigid_body = PhysicalObject::fromXML(type == "movable",
                                                    xml_node,
                                                    this);
-        }
-
-        video::SColor glow;
-        if (xml_node.get("glow", &glow) && glownode)
-        {
-            float r, g, b;
-            r = glow.getRed() / 255.0f;
-            g = glow.getGreen() / 255.0f;
-            b = glow.getBlue() / 255.0f;
-
-            irr_driver->addGlowingNode(glownode, r, g, b);
-        }
-
-        bool forcedbloom = false;
-        if (xml_node.get("forcedbloom", &forcedbloom) && forcedbloom && glownode)
-        {
-            float power = 1;
-            xml_node.get("bloompower", &power);
-            power = clampf(power, 0.5f, 10);
-
-            irr_driver->addForcedBloomNode(glownode, power);
-        }
-
-        bool displacing = false;
-        if (xml_node.get("displacing", &displacing) && displacing && glownode)
-        {
-            irr_driver->addDisplacingNode(glownode);
         }
     }
 
@@ -241,7 +171,7 @@ TrackObject::~TrackObject()
 {
     delete m_presentation;
     delete m_animator;
-    delete m_physical_object;
+    delete m_rigid_body;
 }   // ~TrackObject
 
 // ----------------------------------------------------------------------------
@@ -253,7 +183,6 @@ void TrackObject::reset()
 
     if (m_animator != NULL) m_animator->reset();
 }   // reset
-
 // ----------------------------------------------------------------------------
 /** Enables or disables this object. This affects the visibility, i.e.
  *  disabled objects will not be displayed anymore.
@@ -264,13 +193,12 @@ void TrackObject::setEnable(bool mode)
     m_enabled = mode;
     if (m_presentation != NULL) m_presentation->setEnable(m_enabled);
 }   // setEnable
-
 // ----------------------------------------------------------------------------
 void TrackObject::update(float dt)
 {
     if (m_presentation != NULL) m_presentation->update(dt);
 
-    if (m_physical_object != NULL) m_physical_object->update(dt);
+    if (m_rigid_body != NULL) m_rigid_body->update(dt);
 
     if (m_animator != NULL) m_animator->update(dt);
 }   // update
@@ -279,48 +207,21 @@ void TrackObject::update(float dt)
 // ----------------------------------------------------------------------------
 
 void TrackObject::move(const core::vector3df& xyz, const core::vector3df& hpr,
-                       const core::vector3df& scale, bool update_rigid_body)
+                       const core::vector3df& scale, bool updateRigidBody)
 {
     if (m_presentation != NULL) m_presentation->move(xyz, hpr, scale);
-    if (update_rigid_body && m_physical_object != NULL)
-    {
-        // If we set a bullet position from an irrlicht position, we need to
-        // get the absolute transform from the presentation object (as set in
-        // the line before), since xyz etc here are only relative to a
-        // potential parent scene node.
-        TrackObjectPresentationSceneNode *tops =
-            dynamic_cast<TrackObjectPresentationSceneNode*>(m_presentation);
-        if(tops)
-        {
-            const core::matrix4 &m = tops->getNode()
-                                   ->getAbsoluteTransformation();
-            m_physical_object->move(m.getTranslation(),m.getRotationDegrees());
-        }
-        else
-        {
-            m_physical_object->move(xyz, hpr);
-        }
-    }
-}   // move
+    if (updateRigidBody && m_rigid_body != NULL) m_rigid_body->move(xyz, hpr);
+}
 
 // ----------------------------------------------------------------------------
+
 const core::vector3df& TrackObject::getPosition() const
 {
     if (m_presentation != NULL)
         return m_presentation->getPosition();
     else
         return m_init_xyz;
-}   // getPosition
-
-// ----------------------------------------------------------------------------
-
-const core::vector3df TrackObject::getAbsolutePosition() const
-{
-    if (m_presentation != NULL)
-        return m_presentation->getAbsolutePosition();
-    else
-        return m_init_xyz;
-}   // getAbsolutePosition
+}
 
 // ----------------------------------------------------------------------------
 
@@ -330,7 +231,7 @@ const core::vector3df& TrackObject::getRotation() const
         return m_presentation->getRotation();
     else
         return m_init_xyz;
-}  // getRotation
+}
 
 // ----------------------------------------------------------------------------
 
@@ -340,4 +241,4 @@ const core::vector3df& TrackObject::getScale() const
         return m_presentation->getScale();
     else
         return m_init_xyz;
-}   // getScale
+}

@@ -3,7 +3,7 @@
 //  Copyright (C) 2007-2013 Joerg Henrichs
 //
 //  Physics improvements and linear intersection algorithm by
-//  Copyright (C) 2009-2013 David Mikos.
+//  Copyright (C) 2009-2013 David Mikos. 
 //
 //  This program is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU General Public License
@@ -51,6 +51,7 @@ public:
     static  void init(const XMLNode &node, scene::IMesh* missile);
     virtual bool updateAndDelete(float dt);
     virtual void hitTrack ();
+    virtual const core::stringw getHitString(const AbstractKart *kart) const;
     virtual bool hit      (AbstractKart *kart, PhysicalObject *obj=NULL);
 
     // ------------------------------------------------------------------------

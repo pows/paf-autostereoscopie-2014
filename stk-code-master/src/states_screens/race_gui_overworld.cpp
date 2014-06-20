@@ -19,12 +19,13 @@
 
 #include "states_screens/race_gui_overworld.hpp"
 
-#include "challenges/challenge_status.hpp"
+using namespace irr;
+
+#include <algorithm>
+
 #include "challenges/unlock_manager.hpp"
-#include "config/player_manager.hpp"
 #include "config/user_config.hpp"
 #include "graphics/camera.hpp"
-#include "graphics/glwrap.hpp"
 #include "graphics/irr_driver.hpp"
 #include "graphics/material_manager.hpp"
 #include "guiengine/engine.hpp"
@@ -51,9 +52,6 @@
 
 #include <ISceneCollisionManager.h>
 #include <ISceneManager.h>
-using namespace irr;
-
-#include <algorithm>
 
 const int LOCKED = 0;
 const int OPEN = 1;
@@ -71,9 +69,9 @@ RaceGUIOverworld::RaceGUIOverworld()
     m_is_first_render_call = true;
     m_close_to_a_challenge = false;
     m_current_challenge = NULL;
-    m_trophy1 = irr_driver->getTexture(FileManager::GUI, "cup_bronze.png");
-    m_trophy2 = irr_driver->getTexture(FileManager::GUI, "cup_silver.png");
-    m_trophy3 = irr_driver->getTexture(FileManager::GUI, "cup_gold.png"  );
+    m_trophy1 = irr_driver->getTexture( file_manager->getTextureFile("cup_bronze.png") );
+    m_trophy2 = irr_driver->getTexture( file_manager->getTextureFile("cup_silver.png") );
+    m_trophy3 = irr_driver->getTexture( file_manager->getTextureFile("cup_gold.png") );
 
     const float scaling = irr_driver->getFrameSize().Height / 420.0f;
     // Marker texture has to be power-of-two for (old) OpenGL compliance
@@ -114,8 +112,8 @@ RaceGUIOverworld::RaceGUIOverworld()
     gui::ScalableFont* font = GUIEngine::getFont();
     m_trophy_points_width = font->getDimension(L"1000").Width;
 
-    m_lock           = irr_driver->getTexture(FileManager::GUI,"gui_lock.png");
-    m_open_challenge = irr_driver->getTexture(FileManager::GUI,"challenge.png");
+    m_lock = irr_driver->getTexture( file_manager->getTextureFile("gui_lock.png") );
+    m_open_challenge = irr_driver->getTexture( file_manager->getGUIDir() + "challenge.png" );
 
     m_icons[0] = m_lock;
     m_icons[1] = m_open_challenge;
@@ -145,7 +143,8 @@ void RaceGUIOverworld::renderGlobal(float dt)
         !GUIEngine::ModalDialog::isADialogActive())
     {
         static video::SColor black = video::SColor(255,0,0,0);
-        GL32_draw2DRectangle(black,
+        irr_driver->getVideoDriver()
+        ->draw2DRectangle(black,
                           core::rect<s32>(UserConfigParams::m_width/2,
                                           UserConfigParams::m_height/2,
                                           UserConfigParams::m_width,
@@ -207,8 +206,8 @@ void RaceGUIOverworld::renderPlayerView(const Camera *camera, float dt)
  */
 void RaceGUIOverworld::drawTrophyPoints()
 {
-    PlayerProfile *player = PlayerManager::getCurrentPlayer();
-    const int points = player->getPoints();
+    GameSlot* slot = unlock_manager->getCurrentSlot();
+    const int points = slot->getPoints();
     std::string s = StringUtils::toString(points);
     core::stringw sw(s.c_str());
 
@@ -234,12 +233,12 @@ void RaceGUIOverworld::drawTrophyPoints()
 
     if (!m_close_to_a_challenge)
     {
-        draw2DImage(m_trophy1, dest, source, NULL,
+        irr_driver->getVideoDriver()->draw2DImage(m_trophy1, dest, source, NULL,
                                                   NULL, true /* alpha */);
     }
 
     dest += core::position2di((int)(size*1.5f), 0);
-    std::string easyTrophies = StringUtils::toString(player->getNumEasyTrophies());
+    std::string easyTrophies = StringUtils::toString(slot->getNumEasyTrophies());
     core::stringw easyTrophiesW(easyTrophies.c_str());
     if (!m_close_to_a_challenge)
     {
@@ -249,12 +248,12 @@ void RaceGUIOverworld::drawTrophyPoints()
     dest += core::position2di(size*2, 0);
     if (!m_close_to_a_challenge)
     {
-        draw2DImage(m_trophy2, dest, source, NULL,
+        irr_driver->getVideoDriver()->draw2DImage(m_trophy2, dest, source, NULL,
                                                   NULL, true /* alpha */);
     }
 
     dest += core::position2di((int)(size*1.5f), 0);
-    std::string mediumTrophies = StringUtils::toString(player->getNumMediumTrophies());
+    std::string mediumTrophies = StringUtils::toString(slot->getNumMediumTrophies());
     core::stringw mediumTrophiesW(mediumTrophies.c_str());
     if (!m_close_to_a_challenge)
     {
@@ -264,11 +263,11 @@ void RaceGUIOverworld::drawTrophyPoints()
     dest += core::position2di(size*2, 0);
     if (!m_close_to_a_challenge)
     {
-        draw2DImage(m_trophy3, dest, source, NULL,
+        irr_driver->getVideoDriver()->draw2DImage(m_trophy3, dest, source, NULL,
                                                   NULL, true /* alpha */);
     }
     dest += core::position2di((int)(size*1.5f), 0);
-    std::string hardTrophies = StringUtils::toString(player->getNumHardTrophies());
+    std::string hardTrophies = StringUtils::toString(slot->getNumHardTrophies());
     core::stringw hardTrophiesW(hardTrophies.c_str());
     if (!m_close_to_a_challenge)
     {
@@ -278,7 +277,7 @@ void RaceGUIOverworld::drawTrophyPoints()
     dest = core::rect<s32>(pos.UpperLeftCorner.X - size - 5, pos.UpperLeftCorner.Y,
                            pos.UpperLeftCorner.X - 5, pos.UpperLeftCorner.Y + size);
 
-    draw2DImage(m_open_challenge, dest, source, NULL,
+    irr_driver->getVideoDriver()->draw2DImage(m_open_challenge, dest, source, NULL,
                                               NULL, true /* alpha */);
 
     pos.LowerRightCorner.Y = dest.LowerRightCorner.Y;
@@ -331,7 +330,7 @@ void RaceGUIOverworld::drawGlobalMiniMap()
         core::rect<s32> dest(m_map_left,               upper_y,
                              m_map_left + m_map_width, lower_y);
         core::rect<s32> source(core::position2di(0, 0), mini_map->getOriginalSize());
-        draw2DImage(mini_map, dest, source, 0, 0, true);
+        irr_driver->getVideoDriver()->draw2DImage(mini_map, dest, source, 0, 0, true);
     }
 
     Vec3 kart_xyz;
@@ -377,11 +376,11 @@ void RaceGUIOverworld::drawGlobalMiniMap()
                 const core::rect<s32> rect(core::position2d<s32>(0,0),
                                            m_icons_frame->getTexture()->getOriginalSize());
 
-                draw2DImage(m_icons_frame->getTexture(), position,
+                irr_driver->getVideoDriver()->draw2DImage(m_icons_frame->getTexture(), position,
                                                           rect, NULL, colors, true);
             }   // if isPlayerController
 
-            draw2DImage(m_marker, position, source,
+            irr_driver->getVideoDriver()->draw2DImage(m_marker, position, source,
                                                       NULL, NULL, true);
         }   // for i<getNumKarts
     }   // for only_draw_player_kart
@@ -398,9 +397,8 @@ void RaceGUIOverworld::drawGlobalMiniMap()
        // bool locked = (m_locked_challenges.find(c) != m_locked_challenges.end());
         int state = (challenges[n].getForceField().m_is_locked ? LOCKED : OPEN);
 
-        const ChallengeStatus* c = PlayerManager::getCurrentPlayer()
-                                  ->getChallengeStatus(challenges[n].m_challenge_id);
-        if      (c->isSolved(RaceManager::DIFFICULTY_HARD))   state = COMPLETED_HARD;
+        const Challenge* c = unlock_manager->getCurrentSlot()->getChallenge(challenges[n].m_challenge_id);
+        if (c->isSolved(RaceManager::DIFFICULTY_HARD))        state = COMPLETED_HARD;
         else if (c->isSolved(RaceManager::DIFFICULTY_MEDIUM)) state = COMPLETED_MEDIUM;
         else if (c->isSolved(RaceManager::DIFFICULTY_EASY))   state = COMPLETED_EASY;
 
@@ -422,7 +420,7 @@ void RaceGUIOverworld::drawGlobalMiniMap()
                                    lower_y   -(int)(draw_at.getY()-marker_size/2));
             m_current_challenge = &(challenges[n]);
         }
-        draw2DImage(m_icons[state],
+        irr_driver->getVideoDriver()->draw2DImage(m_icons[state],
                                                   dest, source, NULL, NULL, true);
     }
 
@@ -460,8 +458,7 @@ void RaceGUIOverworld::drawGlobalMiniMap()
                 continue;
             }
 
-            const ChallengeData* challenge =
-                unlock_manager->getChallengeData(challenges[n].m_challenge_id);
+            const ChallengeData* challenge = unlock_manager->getChallenge(challenges[n].m_challenge_id);
 
             if (challenge == NULL)
             {
@@ -486,15 +483,6 @@ void RaceGUIOverworld::drawGlobalMiniMap()
 
                 gui::ScalableFont* font = GUIEngine::getTitleFont();
                 font->draw(gp->getName(), pos, video::SColor(255,255,255,255),
-                           false, true /* vcenter */, NULL);
-
-                core::rect<s32> pos(15,
-                                    20 + GUIEngine::getTitleFontHeight(),
-                                    15 + UserConfigParams::m_width/2,
-                                    20 + 2*GUIEngine::getTitleFontHeight());
-
-                //just below GP name
-                font->draw(_("Type: Grand Prix"), pos, video::SColor(255,255,255,255),
                            false, true /* vcenter */, NULL);
             }
             else
@@ -558,7 +546,7 @@ void RaceGUIOverworld::drawEnergyMeter(int x, int y, const AbstractKart *kart,
     x    -= w;
 
     // Background
-    draw2DImage(m_gauge_empty, core::rect<s32>(x, y, x+w, y+h) /* dest rect */,
+    irr_driver->getVideoDriver()->draw2DImage(m_gauge_empty, core::rect<s32>(x, y, x+w, y+h) /* dest rect */,
                                               core::rect<s32>(0, 0, 64, 256) /* source rect */,
                                               NULL /* clip rect */, NULL /* colors */,
                                               true /* alpha */);
@@ -577,7 +565,7 @@ void RaceGUIOverworld::drawEnergyMeter(int x, int y, const AbstractKart *kart,
         if (state >= 1.0f) y1 = y;
 
         core::rect<s32> clip(x, y1, x + w, y + h);
-        draw2DImage(m_gauge_goal, core::rect<s32>(x, y, x+w, y+h) /* dest rect */,
+        irr_driver->getVideoDriver()->draw2DImage(m_gauge_goal, core::rect<s32>(x, y, x+w, y+h) /* dest rect */,
                                                   core::rect<s32>(0, 0, 64, 256) /* source rect */,
                                                   &clip, NULL /* colors */, true /* alpha */);
     }
@@ -593,7 +581,7 @@ void RaceGUIOverworld::drawEnergyMeter(int x, int y, const AbstractKart *kart,
         if (state >= 1.0f) y1 = y;
 
         core::rect<s32> clip(x, y1, x + w, y + h);
-        draw2DImage(m_gauge_full, core::rect<s32>(x, y, x+w, y+h) /* dest rect */,
+        irr_driver->getVideoDriver()->draw2DImage(m_gauge_full, core::rect<s32>(x, y, x+w, y+h) /* dest rect */,
                                                   core::rect<s32>(0, 0, 64, 256) /* source rect */,
                                                   &clip, NULL /* colors */, true /* alpha */);
     }

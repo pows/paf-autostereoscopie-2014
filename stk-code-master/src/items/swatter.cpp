@@ -71,7 +71,7 @@ Swatter::Swatter(AbstractKart *kart, bool was_bomb,
     if (m_removing_bomb)
     {
         m_scene_node->setMesh(irr_driver->getAnimatedMesh(
-                        file_manager->getAsset(FileManager::MODEL,"swatter_anim2.b3d") ) );
+                        file_manager->getModelFile("swatter_anim2.b3d") ) );
         m_scene_node->setRotation(core::vector3df(0.0, -180.0, 0.0));
         m_scene_node->setAnimationSpeed(0.9f);
         m_scene_node->setCurrentFrame(0.0f);
@@ -295,6 +295,16 @@ void Swatter::squashThingsAround()
 
         kart->setSquash(kp->getSquashDuration(), kp->getSquashSlowdown());
 
+        RaceGUIBase* gui = World::getWorld()->getRaceGUI();
+        irr::core::stringw hit_message =
+            StringUtils::insertValues(getHitString(kart),
+                                      core::stringw(kart->getName()),
+                                      core::stringw(m_kart->getName())
+                                                                         );
+        if(hit_message.size()>0)
+            gui->addMessage(translations->fribidize(hit_message), NULL, 3.0f,
+                            video::SColor(255, 255, 255, 255), false);
+
         if (kart->getAttachment()->getType()==Attachment::ATTACH_BOMB)
         {   // make bomb explode
             kart->getAttachment()->update(10000);
@@ -308,4 +318,28 @@ void Swatter::squashThingsAround()
     }   // for i < num_kartrs
 
     // TODO: squash items
-}   // squashThingsAround
+}
+
+
+
+// ----------------------------------------------------------------------------
+/** Picks a random message to be displayed when a kart is hit by a swatter
+ *  \param kart The kart that was hit.
+ *  \returns The string to display.
+ */
+const core::stringw Swatter::getHitString(const AbstractKart *kart) const
+{
+    RandomGenerator r;
+
+    const int SWATTER_STRINGS_AMOUNT = 3;
+    switch (r.get(SWATTER_STRINGS_AMOUNT))
+    {
+        //I18N: shown when hit by swatter. %1 is the attacker, %0 is the victim.
+    case 0 : return _LTR("%1 thinks %0 is a big fly");
+        //I18N: shown when hit by swatter. %1 is the attacker, %0 is the victim.
+    case 1 : return _LTR("%1 flattens %0");
+        //I18N: shown when hit by swatter. %s is the victim
+    case 2 : return _LTR("%s feels flat today");
+    default: assert(false); return L"";  //  avoid compiler warning
+    }
+}

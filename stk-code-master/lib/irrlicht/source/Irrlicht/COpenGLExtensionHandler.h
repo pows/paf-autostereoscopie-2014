@@ -30,7 +30,7 @@
 	#endif
 
 #elif defined(_IRR_COMPILE_WITH_OSX_DEVICE_)
-	#include "MacOSX/CIrrDeviceMacOSX.h"
+	#include "CIrrDeviceMacOSX.h"
 	#if defined(_IRR_OPENGL_USE_EXTPOINTER_)
 		#define GL_GLEXT_LEGACY 1
 	#endif
@@ -49,7 +49,6 @@
 	#define NO_SDL_GLEXT
 	#include <SDL/SDL_video.h>
 	#include <SDL/SDL_opengl.h>
-        typedef void (APIENTRYP PFNGLBLENDEQUATIONPROC) (GLenum mode);
 	#include "glext.h"
 #else
 	#if defined(_IRR_OPENGL_USE_EXTPOINTER_)
@@ -62,10 +61,9 @@
 	#include <GL/gl.h>
 	#include <GL/glx.h>
 	#if defined(_IRR_OPENGL_USE_EXTPOINTER_)
-        typedef void (APIENTRYP PFNGLBLENDEQUATIONPROC) (GLenum mode);
-	#include <GL/glext.h>
+	#include "glext.h"
 	#undef GLX_ARB_get_proc_address // avoid problems with local glxext.h
-	#include <GL/glxext.h>
+	#include "glxext.h"
 	#endif
 #endif
 
@@ -932,8 +930,6 @@ class COpenGLExtensionHandler
 	//! queries the features of the driver, returns true if feature is available
 	bool queryOpenGLFeature(EOpenGLFeatures feature) const
 	{
-	  if (COpenGLExtensionHandler::IRR_EXT_packed_depth_stencil)
-		 return true;
 		return FeatureAvailable[feature];
 	}
 

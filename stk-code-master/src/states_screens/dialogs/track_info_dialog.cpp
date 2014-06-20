@@ -18,8 +18,6 @@
 #include "states_screens/dialogs/track_info_dialog.hpp"
 
 #include "challenges/unlock_manager.hpp"
-#include "config/player_manager.hpp"
-#include "config/user_config.hpp"
 #include "graphics/irr_driver.hpp"
 #include "guiengine/engine.hpp"
 #include "guiengine/screen.hpp"
@@ -30,6 +28,7 @@
 #include "io/file_manager.hpp"
 #include "karts/kart_properties.hpp"
 #include "karts/kart_properties_manager.hpp"
+#include "network/network_manager.hpp"
 #include "race/highscores.hpp"
 #include "race/highscore_manager.hpp"
 #include "race/race_manager.hpp"
@@ -173,7 +172,7 @@ TrackInfoDialog::~TrackInfoDialog()
 {
     // Place focus back on selected track, in case the dialog was cancelled and we're back to
     // the track selection screen after
-    GUIEngine::Screen* curr_screen = GUIEngine::getCurrentScreen();
+    Screen* curr_screen = GUIEngine::getCurrentScreen();
     if (curr_screen->getName() == "tracks.stkgui")
     {
         ((TracksScreen*)curr_screen)->setFocusOnTrack(m_ribbon_item);
@@ -228,8 +227,7 @@ void TrackInfoDialog::updateHighScores()
             line = _("(Empty)");
 
             ITexture* no_kart_texture = irr_driver->getTexture(
-                                 file_manager->getAsset(FileManager::GUI,
-                                                        "random_kart.png") );
+                    (file_manager->getGUIDir() + "random_kart.png").c_str() ) ;
             m_kart_icons[n]->setImage(no_kart_texture);
 
         }
@@ -252,7 +250,7 @@ void TrackInfoDialog::onEnterPressedInternal()
     race_manager->setReverseTrack(reverse_track);
     std::string track_ident = m_track_ident;
     // Disable accidentally unlocking of a challenge
-    PlayerManager::getCurrentPlayer()->setCurrentChallenge("");
+    unlock_manager->getCurrentSlot()->setCurrentChallenge("");
 
     ModalDialog::dismiss();
     race_manager->startSingleRace(track_ident, num_laps, false);

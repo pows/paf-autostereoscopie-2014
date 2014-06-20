@@ -40,27 +40,23 @@ uniform float mask_radius;
 // Maximum height of texture used
 uniform float max_tex_height;
 
-layout (std140) uniform MatrixesData
-{
-    mat4 ViewMatrix;
-    mat4 ProjectionMatrix;
-    mat4 InverseViewMatrix;
-    mat4 InverseProjectionMatrix;
-    mat4 ShadowViewProjMatrixes[4];
-    vec2 screen;
-};
-
-out vec4 FragColor;
-
 // Number of samples used for blurring
-#define NB_SAMPLES 8
+#define NB_SAMPLES 12
 
 void main()
 {
-	vec2 texcoords = gl_FragCoord.xy / screen;
+	vec2 texcoords = gl_TexCoord[0].st;
 
 	// Sample the color buffer
-	vec3 color = texture(color_buffer, texcoords).rgb;
+	vec3 color = texture2D(color_buffer, texcoords).rgb;
+
+	// If no motion blur is needed, don't do any of the blur computation,
+	// just return the color from the texture.
+	if(boost_amount==0.0)
+	{
+		gl_FragColor = vec4(color, 1.0);
+		return;
+	}
 
 	// Compute the blur direction.
 	// IMPORTANT: we don't normalize it so that it avoids a glitch around 'center',
@@ -85,12 +81,12 @@ void main()
 	vec2 blur_texcoords = texcoords + inc_vec;
 	for(int i=1 ; i < NB_SAMPLES ; i++)
 	{
-		color += texture(color_buffer, blur_texcoords).rgb;
+		color += texture2D(color_buffer, blur_texcoords).rgb;
 		blur_texcoords += inc_vec;
 	}
 	color /= vec3(NB_SAMPLES);
-	FragColor = vec4(color, 1.0);
+	gl_FragColor = vec4(color, 1.0);
 
 	// Keep this commented line for debugging:
-	//FragColor = vec4(blur_factor, blur_factor, blur_factor, 0.0);
+	//gl_FragColor = vec4(blur_factor, blur_factor, blur_factor, 0.0);
 }

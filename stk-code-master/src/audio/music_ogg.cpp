@@ -30,7 +30,6 @@
 #include "audio/music_manager.hpp"
 #include "audio/sfx_manager.hpp"
 #include "utils/constants.hpp"
-#include "utils/log.hpp"
 
 MusicOggStream::MusicOggStream()
 {
@@ -294,6 +293,7 @@ void MusicOggStream::update()
             // no more data. Seek to beginning (causes the sound to loop)
             ov_time_seek(&m_oggStream, 0);
             active = streamIntoBuffer(buffer);//now there really should be data
+            //fprintf(stdout,"Music buffer under-run.\n");
         }
 
         alSourceQueueBuffers(m_soundSource, 1, &buffer);

@@ -31,7 +31,7 @@
 
 class XMLNode;
 class ThreeDAnimation;
-class ModelDefinitionLoader;
+
 
 /**
  * \ingroup tracks
@@ -73,19 +73,15 @@ protected:
     std::string                    m_type;
 
     bool                           m_soccer_ball;
-    
-    bool                           m_garage;
-    
-    float                          m_distance;
 
-    PhysicalObject*                m_physical_object;
+    PhysicalObject*                m_rigid_body;
 
     ThreeDAnimation*               m_animator;
-    
-    void init(const XMLNode &xml_node, scene::ISceneNode* parent, ModelDefinitionLoader& model_def_loader);
+
+    void init(const XMLNode &xml_node, LODNode* lodNode);
 
 public:
-                 TrackObject(const XMLNode &xml_node, scene::ISceneNode* parent, ModelDefinitionLoader& model_def_loader);
+                 TrackObject(const XMLNode &xml_node, LODNode* lodNode=NULL);
 
                  TrackObject(const core::vector3df& xyz,
                              const core::vector3df& hpr,
@@ -94,7 +90,7 @@ public:
                              TrackObjectPresentation* presentation,
                              bool is_dynamic,
                              const PhysicalObject::Settings* physicsSettings);
-    virtual      ~TrackObject();
+                ~TrackObject();
     virtual void update(float dt);
     virtual void reset();
     /** To finish object constructions. Called after the track model
@@ -110,11 +106,9 @@ public:
     const std::string& getType() const { return m_type; }
 
     bool isSoccerBall() const { return m_soccer_ball; }
-    bool isGarage() const { return m_garage; }
-    float getDistance() const { return m_distance; }
-    
-    const PhysicalObject* getPhysicalObject() const { return m_physical_object; }
-    PhysicalObject* getPhysicalObject() { return m_physical_object; }
+
+    const PhysicalObject* getPhysics() const { return m_rigid_body; }
+    PhysicalObject* getPhysics() { return m_rigid_body; }
 
     const core::vector3df getInitXYZ() const { return m_init_xyz; }
     const core::vector3df getInitRotation() const { return m_init_hpr; }
@@ -133,7 +127,6 @@ public:
     const ThreeDAnimation* getAnimator() const { return m_animator; }
 
     const core::vector3df& getPosition() const;
-    const core::vector3df  getAbsolutePosition() const;
     const core::vector3df& getRotation() const;
     const core::vector3df& getScale() const;
 

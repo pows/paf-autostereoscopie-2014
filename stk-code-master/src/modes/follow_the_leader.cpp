@@ -20,7 +20,6 @@
 #include "audio/music_manager.hpp"
 #include "challenges/unlock_manager.hpp"
 #include "config/user_config.hpp"
-#include "graphics/camera.hpp"
 #include "items/powerup_manager.hpp"
 #include "karts/abstract_kart.hpp"
 #include "states_screens/race_gui_base.hpp"
@@ -108,19 +107,19 @@ void FollowTheLeaderRace::countdownReachedZero()
     AbstractKart *kart = getKartAtPosition(position_to_remove);
     if(!kart || kart->isEliminated())
     {
-        Log::error("[FTL]", "Problem with removing leader: position %d not found",
+        fprintf(stderr,"Problem with removing leader: position %d not found\n",
                 position_to_remove);
         for(unsigned int i=0; i<m_karts.size(); i++)
         {
-            Log::error("[FTL]", "kart %u: eliminated %d position %d",
-                    i, m_karts[i]->isEliminated(), m_karts[i]->getPosition());
+            fprintf(stderr,"kart %d: eliminated %d position %d\n",
+                    i,m_karts[i]->isEliminated(), m_karts[i]->getPosition());
         }   // for i
     }  //
     else
     {
         if(UserConfigParams::m_ftl_debug)
         {
-            Log::debug("[FTL", "Eliminiating kart '%s' at position %d.",
+            printf("[ftl] Eliminiating kart '%s' at position %d.\n",
                 kart->getIdent().c_str(), position_to_remove);
         }
         eliminateKart(kart->getWorldKartId());

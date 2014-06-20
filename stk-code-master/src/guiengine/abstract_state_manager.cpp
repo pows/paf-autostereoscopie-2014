@@ -18,15 +18,13 @@
 
 #include "guiengine/abstract_state_manager.hpp"
 
-#include "config/user_config.hpp"
+#include <vector>
+#include <iostream>
+
 #include "guiengine/engine.hpp"
 #include "guiengine/modaldialog.hpp"
 #include "guiengine/screen.hpp"
 #include "input/device_manager.hpp"
-
-#include <vector>
-#include <iostream>
-
 
 using namespace GUIEngine;
 
@@ -134,13 +132,13 @@ void AbstractStateManager::pushScreen(Screen* screen)
     screen->init();
 
     onTopMostScreenChanged();
-}   // pushScreen%
+}   // pushScreen
 
 // ----------------------------------------------------------------------------
 
-void AbstractStateManager::replaceTopMostScreen(Screen* screen, GUIEngine::GameState gameState)
+void AbstractStateManager::replaceTopMostScreen(Screen* screen)
 {
-    //assert(m_game_mode != GAME);
+    assert(m_game_mode != GAME);
     // you need to close any dialog before calling this
     assert(!ModalDialog::isADialogActive());
 
@@ -156,11 +154,9 @@ void AbstractStateManager::replaceTopMostScreen(Screen* screen, GUIEngine::GameS
     assert(m_menu_stack.size() > 0);
 
     // Send tear-down event to previous menu
-    if (getCurrentScreen() != NULL)
-        getCurrentScreen()->tearDown();
+    getCurrentScreen()->tearDown();
 
     m_menu_stack[m_menu_stack.size()-1] = name;
-    setGameState(gameState);
     switchToScreen(name.c_str());
 
     // Send init event to new menu

@@ -27,9 +27,6 @@
 
 #include <ISceneManager.h>
 
-#include <iomanip>
-#include <iostream>
-
 ProfileWorld::ProfileType ProfileWorld::m_profile_mode=PROFILE_NONE;
 int   ProfileWorld::m_num_laps    = 0;
 float ProfileWorld::m_time        = 0.0f;
@@ -200,30 +197,30 @@ void ProfileWorld::enterRaceOverState()
 
     // Print framerate statistics
     float runtime = (irr_driver->getRealTime()-m_start_time)*0.001f;
-    Log::verbose("profile", "Number of frames: %d time %f, Average FPS: %f",
-                 m_frame_count, runtime, (float)m_frame_count/runtime);
+    printf("Number of frames: %d time %f, Average FPS: %f\n",
+           m_frame_count, runtime, (float)m_frame_count/runtime);
 
     // Print geometry statistics if we're not in no-graphics mode
     if(!m_no_graphics)
     {
-        Log::verbose("profile", "Average # drawn nodes           %f k",
-                     (float)m_num_triangles/m_frame_count);
-        Log::verbose("profile", "Average # culled nodes:         %f k",
-                     (float)m_num_culls/m_frame_count);
-        Log::verbose("profile", "Average # solid nodes:          %f k",
-                     (float)m_num_solid/m_frame_count);
-        Log::verbose("profile", "Average # transparent nodes:    %f",
-                     (float)m_num_transparent/m_frame_count);
-        Log::verbose("profile", "Average # transp. effect nodes: %f",
-                     (float)m_num_trans_effect/m_frame_count);
+        printf("Average # drawn nodes           %f k\n",
+               (float)m_num_triangles/m_frame_count);
+        printf("Average # culled nodes:         %f k\n",
+               (float)m_num_culls/m_frame_count);
+        printf("Average # solid nodes:          %f k\n",
+               (float)m_num_solid/m_frame_count);
+        printf("Average # transparent nodes:    %f\n",
+               (float)m_num_transparent/m_frame_count);
+        printf("Average # transp. effect nodes: %f\n",
+               (float)m_num_trans_effect/m_frame_count);
     }
 
     // Print race statistics for each individual kart
     float min_t=999999.9f, max_t=0.0, av_t=0.0;
-    Log::verbose("profile", "name start_position end_position time average_speed top_speed "
-           "skid_time rescue_time rescue_count brake_count "
-           "explosion_time explosion_count bonus_count banana_count "
-           "small_nitro_count large_nitro_count bubblegum_count");
+    printf("name,start_position,end_position,time,average_speed,top_speed,"
+           "skid_time,rescue_time,rescue_count,brake_count,"
+           "explosion_time,explosion_count,bonus_count,banana_count,"
+           "small_nitro_count,large_nitro_count,bubblegum_count\n");
 
     std::set<std::string> all_groups;
 
@@ -234,29 +231,25 @@ void ProfileWorld::enterRaceOverState()
         max_t = std::max(max_t, kart->getFinishTime());
         min_t = std::min(min_t, kart->getFinishTime());
         av_t += kart->getFinishTime();
-        std::ostringstream ss;
-        ss << kart->getIdent() << " "
-           << kart->getController()->getControllerName() << " ";
-        ss << 1+(int)i << " " << kart->getPosition() << " "
-           << kart->getFinishTime() << " ";
-
+        printf("%s %s,", kart->getIdent().c_str(),
+                kart->getController()->getControllerName().c_str());
         all_groups.insert(kart->getController()->getControllerName());
+        printf("%d,%d,%4.2f,", 1 + (int)i, kart->getPosition(), kart->getFinishTime());
         float distance = (float)(m_profile_mode==PROFILE_LAPS
                                  ? race_manager->getNumLaps() : 1);
         distance *= m_track->getTrackLength();
-        ss << distance/kart->getFinishTime() << " " << kart->getTopSpeed() << " ";
-        ss << kart->getSkiddingTime() << " " << kart->getRescueTime() << " ";
-        ss << kart->getRescueCount() << " " << kart->getBrakeCount() << " ";
-        ss << kart->getExplosionTime() << " " << kart->getExplosionCount() << " ";
-        ss << kart->getBonusCount() << " " << kart->getBananaCount() << " ";
-        ss << kart->getSmallNitroCount() << " " << kart->getLargeNitroCount() << " ";
-        ss << kart->getBubblegumCount() << " " << kart->getOffTrackCount() << " ";
-        Log::verbose("profile", ss.str().c_str());
+        printf("%4.2f,%3.2f,%4.2f,%4.2f,%d,%d,%4.2f,%d,%d,%d,%d,%d,%d,%d\n",
+               distance/kart->getFinishTime(), kart->getTopSpeed(),
+               kart->getSkiddingTime(), kart->getRescueTime(),
+               kart->getRescueCount(), kart->getBrakeCount(),
+               kart->getExplosionTime(), kart->getExplosionCount(),
+               kart->getBonusCount(), kart->getBananaCount(),
+               kart->getSmallNitroCount(), kart->getLargeNitroCount(),
+               kart->getBubblegumCount(), kart->getOffTrackCount() );
     }
 
     // Print group statistics of all karts
-    Log::verbose("profile", "min %f  max %f  av %f\n",
-                  min_t, max_t, av_t/m_karts.size());
+    printf("min %f  max %f  av %f\n",min_t, max_t, av_t/m_karts.size());
 
     // Determine maximum length of group name
     unsigned int max_len=4;   // for 'name' heading
@@ -267,11 +260,11 @@ void ProfileWorld::enterRaceOverState()
     }
     max_len++;  // increase by 1 for one additional space after the name
 
-    std::ostringstream ss;
-    Log::verbose("profile", "");
-    ss << "name" << std::setw(max_len-4) << " "
-       << "Strt End  Time    AvSp  Top   Skid  Resc Rsc Brake Expl Exp Itm Ban SNitLNit Bub  Off";
-    Log::verbose("profile", ss.str().c_str());
+    printf("\nname");
+    for(unsigned int j=4; j<max_len; j++)
+        printf(" ");
+    printf("Strt End  Time    AvSp  Top   Skid  Resc Rsc Brake Expl Exp Itm Ban SNitLNit Bub  Off\n");
+
     for(std::set<std::string>::iterator it = all_groups.begin();
         it !=all_groups.end(); it++)
     {
@@ -288,22 +281,19 @@ void ProfileWorld::enterRaceOverState()
             if(name!=*it)
                 continue;
             count ++;
-            std::ostringstream ss;
-            ss.setf(std::ios::fixed, std::ios::floatfield);
-            ss.precision(2);
-            ss << name << std::setw(max_len-name.size()) << " ";
-            ss << std::setw(4) <<  1 + i
-               << std::setw(4) << kart->getPosition()
-               << std::setw(7) << kart->getFinishTime();
+            printf("%s", name.c_str());
+            for(unsigned int j=name.size(); j<max_len; j++)
+                printf(" ");
+
+            printf("%4d %3d %6.2f ", 1 + i, kart->getPosition(),
+                                     kart->getFinishTime());
             position_gain += 1+i - kart->getPosition();
 
             float distance = (float)(m_profile_mode==PROFILE_LAPS
                                      ? race_manager->getNumLaps() : 1);
             distance *= m_track->getTrackLength();
-
-            Log::verbose("profile",
-                   "%s %4.2f %3.2f %6.2f %4.2f %3d %5d %4.2f %3d %3d %3d %3d %3d %3d %5d",
-                   ss.str().c_str(), distance/kart->getFinishTime(),
+            printf(" %4.2f %3.2f %6.2f %4.2f %3d %5d %4.2f %3d %3d %3d %3d %3d %3d %5d\n",
+                   distance/kart->getFinishTime(),
                    kart->getTopSpeed(),
                    kart->getSkiddingTime(),        kart->getRescueTime(),
                    kart->getRescueCount(),         kart->getBrakeCount(),
@@ -312,7 +302,7 @@ void ProfileWorld::enterRaceOverState()
                    kart->getSmallNitroCount(),     kart->getLargeNitroCount(),
                    kart->getBubblegumCount(),      kart->getOffTrackCount()
                    );
-            Log::verbose("profile", "nitro %f\n", kart->getEnergy());
+            printf("nitro %f\n", kart->getEnergy());
             av_time += kart->getFinishTime();
             skidding_time   += kart->getSkiddingTime();
             rescue_time     += kart->getRescueTime();
@@ -327,21 +317,18 @@ void ProfileWorld::enterRaceOverState()
             expl_count      += kart->getExplosionCount();
             off_track_count += kart->getOffTrackCount();
         }    // for i < m_karts.size
-        
-        Log::verbose("profile", std::string(max_len+85, '-').c_str());
-        ss.clear();
-        ss.str("");
-        ss << *it << std::string(max_len-it->size(),' ');
-        ss << std::showpos << std::setw(4) << position_gain
-           << std::noshowpos << std::setw(13) << av_time/count
-           << std::string(11,' ');
+        for(unsigned int j=0; j<max_len + 85; j++)
+            printf("-");
+        printf("\n%s", it->c_str());
+        for(unsigned int j=it->size(); j<max_len; j++)
+            printf(" ");
+        printf("%+4d     %6.2f %13s", position_gain, av_time/count, "");
 
-        Log::verbose("profile", "%s%6.2f %4.2f %3d %5d %4.2f %3d %3d %3d %3d %3d %3d %5d",
-               ss.str().c_str(), skidding_time/count, rescue_time/count,
-               rescue_count,brake_count, expl_time, expl_count, bonus_count,
+        printf("%6.2f %4.2f %3d %5d %4.2f %3d %3d %3d %3d %3d %3d %5d\n\n",
+               skidding_time/count, rescue_time/count, rescue_count,
+               brake_count, expl_time, expl_count, bonus_count,
                banana_count, s_nitro_count, l_nitro_count, bubble_count,
                off_track_count);
-        Log::verbose("profile", "");
     }   // for it !=all_groups.end
     delete this;
     main_loop->abort();

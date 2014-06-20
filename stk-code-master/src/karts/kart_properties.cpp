@@ -20,7 +20,6 @@
 
 #include "addons/addon.hpp"
 #include "config/stk_config.hpp"
-#include "config/player_manager.hpp"
 #include "graphics/irr_driver.hpp"
 #include "graphics/material_manager.hpp"
 #include "io/file_manager.hpp"
@@ -89,9 +88,9 @@ KartProperties::KartProperties(const std::string &filename)
         m_rescue_time = m_rescue_height = m_explosion_time =
         m_explosion_radius = m_max_lean = m_lean_speed =
         m_swatter_distance2 = m_swatter_duration = m_squash_slowdown =
-        m_squash_duration = m_downward_impulse_factor =
+        m_squash_duration = m_downward_impulse_factor = 
         m_bubblegum_fade_in_time = m_bubblegum_speed_fraction =
-        m_bubblegum_time = m_bubblegum_torque = m_jump_animation_time =
+        m_bubblegum_time = m_bubblegum_torque = m_jump_animation_time = 
             UNDEFINED;
 
     m_engine_power.resize(RaceManager::DIFFICULTY_COUNT, UNDEFINED);
@@ -202,9 +201,9 @@ void KartProperties::load(const std::string &filename, const std::string &node)
     }
     catch(std::exception& err)
     {
-        Log::error("[KartProperties]", "Error while parsing KartProperties '%s':",
+        Log::error("KartProperties", "Error while parsing KartProperties '%s':\n",
                    filename.c_str());
-        Log::error("[KartProperties]", "%s", err.what());
+        Log::error("KartProperties", "%s\n", err.what());
     }
     if(root) delete root;
 
@@ -393,15 +392,15 @@ void KartProperties::getAllData(const XMLNode * root)
         engine_node->get("power", &m_engine_power);
         if(m_engine_power.size()!=RaceManager::DIFFICULTY_COUNT)
         {
-            Log::fatal("[KartProperties]",
-                       "Incorrect engine-power specifications for kart '%s'",
+            Log::fatal("KartProperties",
+                       "Incorrect engine-power specifications for kart '%s'\n",
                        getIdent().c_str());
         }
         engine_node->get("max-speed", &m_max_speed);
         if(m_max_speed.size()!=RaceManager::DIFFICULTY_COUNT)
         {
-            Log::fatal("[KartProperties]",
-                       "Incorrect max-speed specifications for kart '%s'",
+            Log::fatal("KartProperties",
+                       "Incorrect max-speed specifications for kart '%s'\n",
                        getIdent().c_str());
         }
     }   // if getNode("engine")
@@ -478,8 +477,8 @@ void KartProperties::getAllData(const XMLNode * root)
             m_terrain_impulse_type = IMPULSE_TO_DRIVELINE;
         else
         {
-            Log::fatal("[KartProperties]",
-                       "Missing or incorrect value for impulse-type: '%s'.",
+            Log::fatal("KartProperties",
+                       "Missing or incorrect value for impulse-type: '%s'.\n",
                        s.c_str());
         }
     }
@@ -561,17 +560,9 @@ void KartProperties::getAllData(const XMLNode * root)
         else if (s == "small") m_engine_sfx_type = "engine_small";
         else
         {
-            if (sfx_manager->soundExist(s))
-            {
-                m_engine_sfx_type = s;
-            }
-            else
-            {
-                Log::error("[KartProperties]",
-                           "Kart '%s' has an invalid engine '%s'.",
-                           m_name.c_str(), s.c_str());
-                m_engine_sfx_type = "engine_small";
-            }
+            Log::warn("KartProperties", "Kart '%s' has invalid engine '%s'.",
+                       m_name.c_str(), s.c_str());
+            m_engine_sfx_type = "engine_small";
         }
 
 #ifdef WILL_BE_ENABLED_ONCE_DONE_PROPERLY
@@ -612,32 +603,32 @@ void KartProperties::checkAllSet(const std::string &filename)
 {
     if(m_gear_switch_ratio.size()==0)
     {
-        Log::fatal("[KartProperties]",
-                   "Missing default value for 'gear-switch-ratio' in '%s'.",
+        Log::fatal("KartProperties",
+                   "Missing default value for 'gear-switch-ratio' in '%s'.\n",
                    filename.c_str());
     }
     if(m_gear_power_increase.size()==0)
     {
-        Log::fatal("[KartProperties]",
-                   "Missing default value for 'gear-power-increase' in '%s'.",
+        Log::fatal("KartProperties",
+                   "Missing default value for 'gear-power-increase' in '%s'.\n",
                 filename.c_str());
     }
     if(m_gear_switch_ratio.size()!=m_gear_power_increase.size())    {
         Log::error("KartProperties",
                    "Number of entries for 'gear-switch-ratio' and "
-                   "'gear-power-increase");
-        Log::fatal("KartProperties", "in '%s' must be equal.",
+                   "'gear-power-increase\n");
+        Log::fatal("KartProperties", "in '%s' must be equal.\n",
                     filename.c_str());
     }
     if(m_startup_boost.size()!=m_startup_times.size())
     {
-        Log::error("[KartProperties]",
-                 "Number of entried for 'startup times' and 'startup-boost");
-        Log::fatal("KartProperties", "must be identical.");
+        Log::error("KartProperties",
+                 "Number of entried for 'startup times' and 'startup-boost\n");
+        Log::fatal("KartProperties", "must be identical.\n");
     }
 #define CHECK_NEG(  a,strA) if(a<=UNDEFINED) {                      \
-        Log::fatal("[KartProperties]",                                \
-                    "Missing default value for '%s' in '%s'.",    \
+        Log::fatal("KartProperties",                                \
+                    "Missing default value for '%s' in '%s'.\n",    \
                     strA,filename.c_str());                \
     }
 
@@ -732,28 +723,6 @@ void KartProperties::checkAllSet(const std::string &filename)
     for(unsigned int i=0; i<RaceManager::DIFFICULTY_COUNT; i++)
         m_ai_properties[i]->checkAllSet(filename);
 }   // checkAllSet
-
-// ----------------------------------------------------------------------------
-bool KartProperties::operator<(const KartProperties &other) const
-{
-    PlayerProfile *p = PlayerManager::getCurrentPlayer();
-    bool this_is_locked = p->isLocked(getIdent());
-    bool other_is_locked = p->isLocked(other.getIdent());
-    if (this_is_locked == other_is_locked)
-    {
-        return getName() < other.getName();
-    }
-    else
-        return other_is_locked;
-
-    return true;
-}  // operator<
-
-// ----------------------------------------------------------------------------
-bool KartProperties::isInGroup(const std::string &group) const
-{
-    return std::find(m_groups.begin(), m_groups.end(), group) != m_groups.end();
-}   // isInGroups
 
 // ----------------------------------------------------------------------------
 /** Called the first time a kart accelerates after 'ready-set-go'. It searches

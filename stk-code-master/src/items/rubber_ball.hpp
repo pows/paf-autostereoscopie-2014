@@ -187,6 +187,9 @@ private:
     /** A 'ping' sound effect to be played when the ball hits the ground. */
     SFXBase     *m_ping_sfx;
 
+    /** Sound effect to be played when a ball hits a kart. */
+    SFXBase     *m_hit_sfx;
+
     void         computeTarget();
     void         updateDistanceToTarget();
     unsigned int getSuccessorToHitTarget(unsigned int node_index,
@@ -204,6 +207,8 @@ public:
     static  void init(const XMLNode &node, scene::IMesh *rubberball);
     virtual bool updateAndDelete(float dt);
     virtual bool hit(AbstractKart* kart, PhysicalObject* obj=NULL);
+    virtual const core::stringw getHitString(const AbstractKart *kart) const;
+
     static float getTimeBetweenRubberBalls()    {return m_time_between_balls;}
     // ------------------------------------------------------------------------
     /** This object does not create an explosion, all affects on

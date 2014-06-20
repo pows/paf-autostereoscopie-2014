@@ -18,7 +18,6 @@
 
 #include "graphics/slip_stream.hpp"
 
-#include "config/user_config.hpp"
 #include "graphics/material.hpp"
 #include "graphics/material_manager.hpp"
 #include "graphics/irr_driver.hpp"

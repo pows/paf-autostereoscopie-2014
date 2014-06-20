@@ -29,11 +29,11 @@
 #include "io/file_manager.hpp"
 #include "states_screens/options_screen_input2.hpp"
 #include "states_screens/options_screen_audio.hpp"
+#include "states_screens/options_screen_players.hpp"
 #include "states_screens/options_screen_video.hpp"
 #include "states_screens/options_screen_ui.hpp"
 #include "states_screens/dialogs/add_device_dialog.hpp"
 #include "states_screens/state_manager.hpp"
-#include "states_screens/user_screen.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
 
@@ -56,9 +56,9 @@ OptionsScreenInput::OptionsScreenInput() : Screen("options_input.stkgui")
 
 void OptionsScreenInput::loadedFromFile()
 {
-    video::ITexture* icon1 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,"keyboard.png"   ));
-    video::ITexture* icon2 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,"gamepad.png"    ));
-    video::ITexture* icon3 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,"gamepad_off.png"));
+    video::ITexture* icon1 = irr_driver->getTexture( file_manager->getGUIDir() + "keyboard.png" );
+    video::ITexture* icon2 = irr_driver->getTexture( file_manager->getGUIDir() + "gamepad.png" );
+    video::ITexture* icon3 = irr_driver->getTexture( file_manager->getGUIDir() + "gamepad_off.png" );
 
     m_icon_bank = new irr::gui::STKModifiedSpriteBank( GUIEngine::getGUIEnv() );
     m_icon_bank->addTextureAsSprite(icon1);
@@ -188,7 +188,7 @@ void OptionsScreenInput::eventCallback(Widget* widget, const std::string& name, 
 
         if (selection == "tab_audio") StateManager::get()->replaceTopMostScreen(OptionsScreenAudio::getInstance());
         else if (selection == "tab_video") StateManager::get()->replaceTopMostScreen(OptionsScreenVideo::getInstance());
-        else if (selection == "tab_players") StateManager::get()->replaceTopMostScreen(TabbedUserScreen::getInstance());
+        else if (selection == "tab_players") StateManager::get()->replaceTopMostScreen(OptionsScreenPlayers::getInstance());
         else if (selection == "tab_controls") StateManager::get()->replaceTopMostScreen(OptionsScreenInput::getInstance());
         else if (selection == "tab_ui") StateManager::get()->replaceTopMostScreen(OptionsScreenUI::getInstance());
     }
@@ -297,7 +297,7 @@ void OptionsScreenInput::filterInput(Input::InputType type,
 
 // -----------------------------------------------------------------------------
 
-void OptionsScreenInput::onUpdate(float dt)
+void OptionsScreenInput::onUpdate(float dt, irr::video::IVideoDriver* drv)
 {
     std::map<std::string, float>::iterator it;
     for (it = m_highlights.begin(); it != m_highlights.end();)
@@ -318,4 +318,4 @@ void OptionsScreenInput::onUpdate(float dt)
         }
     }
     //m_highlights[internal_name]
-}   // onUpdate
+}
