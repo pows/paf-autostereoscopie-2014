@@ -513,7 +513,7 @@ void displayQuad(int is_fpga)
     GLint baseImageLoc = glGetUniformLocation(programID, texture);
     if (baseImageLoc>=0) {
       //fprintf(stderr, "Tx id %s: %d - location %d\n", texture, textureIDs[i], baseImageLoc);
-      glActiveTexture(GL_TEXTURE0 + i);
+      glActiveTexture(GL_TEXTURE0 + i );
       glUniform1i(baseImageLoc, i);
       glBindTexture(GL_TEXTURE_2D, textureIDs[i]);
     }
@@ -902,6 +902,95 @@ void moveCam(){
 }
 
 
+  GLuint* rboId;
+  GLuint depthrenderbuffer;
+  void framebufferloadtexture();
+void framebuffer(){
+
+  rboId = (GLuint*)malloc(sizeof(GLuint)*nbviews);
+  //Loading framebuffer object
+  //glGenFramebuffers(1, &rboId);
+  glGenFramebuffers(nbviews, rboId);
+  //glBindRenderbuffer(GL_RENDERBUFFER, rboId);
+  //glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+  //glBindRenderbuffer(GL_RENDERBUFFER, 0);
+  
+  int i=0;
+  //z depth
+  glGenRenderbuffers(1, &depthrenderbuffer);
+  glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+  for(i=0;i<nbviews;i++){
+     glBindFramebuffer(GL_FRAMEBUFFER, rboId[i]);
+  
+     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+  }
+
+  //window frame buffer.
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  framebufferloadtexture();
+
+  glUseProgram(programID);
+  //set some var for shader
+  char texture[10] ;
+  GLint nbviewsloc = glGetUniformLocation(programID, "floatnbviews");
+  glUniform1fARB(nbviewsloc, (float) nbviews);
+
+  for(i = 0 ; i<nbviews ; i++) {
+    sprintf(texture, "tex%d", i) ;
+    GLint baseImageLoc = glGetUniformLocation(programID, texture);
+    if (baseImageLoc>=0) {
+      //fprintf(stderr, "Tx id %s: %d - location %d\n", texture, textureIDs[i], baseImageLoc);
+      //fprintf(stderr, "\tActivate texture : %d\n", GL_TEXTURE0 + i);
+      glActiveTexture(GL_TEXTURE0 + 1 + i );
+      glUniform1i(baseImageLoc, i + 1);
+      glBindTexture(GL_TEXTURE_2D, textureIDs[i]);
+    }
+  }
+  glUseProgram(0);
+  glActiveTexture(GL_TEXTURE0 );
+
+
+}
+
+void framebufferloadtexture(){
+  char *data;
+  data = (char *)malloc(sizeof(char)*3*width*height);
+  memset(data, 0xFF, sizeof(char)*3*width*height);
+		glBindFramebuffer(GL_FRAMEBUFFER, rboId[0]);
+	for(currentview = 0;currentview < nbviews;currentview++){
+		//glBindFramebuffer(GL_FRAMEBUFFER, rboId[currentview]);
+
+
+
+		glBindTexture(GL_TEXTURE_2D, textureIDs[currentview]);
+		glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, width, height, 0,GL_RGB, GL_UNSIGNED_BYTE, data);
+		// Poor filtering. Needed !
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+		
+
+		// Set "renderedTexture" as our colour attachement #0+currentview
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + currentview, GL_TEXTURE_2D, textureIDs[currentview], 0);
+		//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, GL_TEXTURE_2D, textureIDs[currentview], 0);
+		//GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+		//glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+		 
+	}
+	free(data);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+
 void displayfps(){
 	char* s;
 	frame++;
@@ -922,7 +1011,7 @@ void display()
   if((width != glutGet(GLUT_WINDOW_WIDTH)) || (height != glutGet(GLUT_WINDOW_HEIGHT))){
   	  width = glutGet(GLUT_WINDOW_WIDTH);
   	  height = glutGet(GLUT_WINDOW_HEIGHT);
-	  //framebufferloadtexture();
+	  framebufferloadtexture();
   }
 
 
@@ -963,12 +1052,25 @@ void display()
   }
 
 
-
+  //Preparing the framebuffer
+  if(mode==SHADER)
+  	glBindFramebuffer(GL_FRAMEBUFFER, rboId[0]);
     for (currentview=0; currentview<nbviews; currentview++) {
 
 //      if(currentview == nbviews - 1) process_enable = false;
 
       //if (debug_cam) printf("Camera %d\n",currentview);
+
+	    if(mode==SHADER){
+	    //FrameBuffer Set the correct texture.
+	    //glBindFramebuffer(GL_FRAMEBUFFER, rboId[currentview]);
+    	    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureIDs[currentview], 0);
+	    //glViewport(0,0,width,height);
+            GLuint texTarget[1] = { GL_COLOR_ATTACHMENT0+currentview };
+	    glDrawBuffers(1,texTarget);
+	    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		    printf("Error: frame buffer not op.\n");
+	    }
 
 
 
@@ -1050,10 +1152,10 @@ void display()
       }
 
       if (mode==SHADER) {
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, textureIDs[currentview]);
-	glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, width, height, 0);
-	glDisable(GL_TEXTURE_2D) ;
+	//glEnable(GL_TEXTURE_2D);
+	//glBindTexture(GL_TEXTURE_2D, textureIDs[currentview]);
+	//glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, width, height, 0);
+	//glDisable(GL_TEXTURE_2D) ;
 
       }
 
@@ -1072,6 +1174,11 @@ void display()
 	      break;
     }
 
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    //glViewport(0,0,width,height);
+
+    //if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+//	    printf("Error: frame buffer window not op.\n");
 
 #if 0
     angle = angle -((float)nbviews+1)/2*deltaangle;
@@ -1145,9 +1252,9 @@ void initialize ()
   glEnable( GL_COLOR_MATERIAL );
   glLightModeli( GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE );
 
+
+
 }
-
-
 
 void keyboard ( unsigned char key, int x, int y )
 {
@@ -1402,6 +1509,7 @@ int main(int argc, char **argv)
 
 
   createProgram();
+  framebuffer();
 
   if (image_fond) {
    texture_fond = loadBmp(image_fond);
