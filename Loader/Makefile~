@@ -1,5 +1,0 @@
-all:
-	gcc -g glut_obj.cpp -o test -g -lGLEW -lGL -lGLU -lglut
-
-clean:
-	rm test
