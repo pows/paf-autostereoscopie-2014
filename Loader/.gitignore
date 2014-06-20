@@ -27,3 +27,5 @@ CMakeCache*
 *.vcxproj.filters
 *.vcxproj.user
 *~
+
+.DS_STORE
