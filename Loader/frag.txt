@@ -1,4 +1,6 @@
 
+uniform float floatnbviews;
+
 uniform sampler2D tex0;
 uniform sampler2D tex1;
 uniform sampler2D tex2;
@@ -24,31 +26,23 @@ void getTextureSample(in int texID, out vec4 color) {
 
 void main()
 {
+  int nbviews = int(floatnbviews);
   int x = int(gl_FragCoord.x + 0.5);
   int y = int(gl_FragCoord.y + 0.5) ;
-  int modulox = x/8;
-  int moduloy = y/8;
-  modulox = x - 8 * modulox;
-  moduloy = y - 8 * moduloy;
+  int modulox = x/nbviews;
+  int moduloy = y/nbviews;
+  modulox = x - nbviews * modulox;
+  moduloy = y - nbviews * moduloy;
 
-  int viewLine = 7 - moduloy ;
+  int viewLine = nbviews - 1 - moduloy ;
   int viewPix = viewLine + 3 * modulox ;
-  int viewR = viewPix - 8*(viewPix/8) ;
-  int viewG = viewPix + 1 - 8*((viewPix +1)/8);
-  int viewB = viewPix + 2 - 8*((viewPix +2)/8);
+  int viewR = viewPix - nbviews*(viewPix/nbviews) ;
+  int viewG = viewPix + 1 - nbviews*((viewPix +1)/nbviews);
+  int viewB = viewPix + 2 - nbviews*((viewPix +2)/nbviews);
 
   vec4 colR, colG, colB ;
 
-  colR = texture2D(tex0, gl_TexCoord[0].st);
-  colR = texture2D(tex2, gl_TexCoord[0].st);
 
-/*  gl_FragColor = colR;
-  colR = texture2D(tex1, gl_TexCoord[0].st);
-  gl_FragColor.g = colR.g;
-  colR = texture2D(tex2, gl_TexCoord[0].st);
-  gl_FragColor.b = colR.b;
-
-*/
   getTextureSample(viewR, colR) ; 
   gl_FragColor.r = colR.r ;
   getTextureSample(viewG, colG) ; 
