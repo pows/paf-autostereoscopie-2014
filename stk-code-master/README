@@ -70,5 +70,19 @@ The exporters perform the needed transform, so in Blender you just work
 with XY plane as ground, and things will appear fine in STK (using XZ
 as ground in the code, obviously).
 
+IMPORTANT
+==============
+After the compilation the binary won't be able to launch.
+Please recuperate the following folder :
 
+data/karts
+data/library
+data/music
+data/sfx
+data/textures
+data/tracks
+
+You can get this from http://supertuxkart.sourceforge.net/Downloads
+
+Don't commit this folder, will be to huge to clone.
 
