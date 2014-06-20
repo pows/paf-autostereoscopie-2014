@@ -66,6 +66,8 @@ int scanMode = ROT;
 int width=500;
 int height=500;
 char* title;
+int frame=0, currenttime, timebase=0;
+float fps = 0.0;
 
 float field_of_view_angle;
 float z_near;
@@ -502,6 +504,8 @@ void displayQuad(int is_fpga)
 		glUseProgram(programID);
 		
 		//we activate the 2D textures
+		GLint nbviewsloc = glGetUniformLocation(programID, "floatnbviews");
+		glUniform1fARB(nbviewsloc, (float) nbviews);
   int i ;
   char texture[10] ;
   for(i = 0 ; i<nbviews ; i++) {
@@ -898,8 +902,28 @@ void moveCam(){
 }
 
 
+void displayfps(){
+	char* s;
+	frame++;
+	currenttime = glutGet(GLUT_ELAPSED_TIME);
+	if ((currenttime - timebase) > 1000) {
+		//sprintf(s,"FPS:%4.2f",
+		//		frame*1000.0/(currenttime-timebase));
+		fprintf(stderr,"FPS:%4.2f\r",
+				frame*1000.0/(currenttime-timebase));
+		timebase = currenttime;
+		frame = 0;
+	}
+	
+}
+
 void display()
 {
+  if((width != glutGet(GLUT_WINDOW_WIDTH)) || (height != glutGet(GLUT_WINDOW_HEIGHT))){
+  	  width = glutGet(GLUT_WINDOW_WIDTH);
+  	  height = glutGet(GLUT_WINDOW_HEIGHT);
+	  //framebufferloadtexture();
+  }
 
 
   if(rotate_on) {
@@ -1044,6 +1068,8 @@ void display()
 
 
       //if (debug_cam) printf("angle = %f\n\n",angle);
+      if(mode!=SHADER)
+	      break;
     }
 
 
@@ -1084,6 +1110,7 @@ void display()
 
   //finally flush the last frame drawn
   glutSwapBuffers();
+  displayfps();
 }
 
 
@@ -1126,7 +1153,7 @@ void keyboard ( unsigned char key, int x, int y )
 {
   switch ( key ) {
   case KEY_ESCAPE:
-    printf("%c",key);
+    exit(0);
     break;
   case 'd':{ //Tourner la cam\E9ra vers la gauche
     anglekey = anglekey + rotationangle;
@@ -1238,6 +1265,9 @@ void keyboard ( unsigned char key, int x, int y )
     bounce_on = !bounce_on ;
     glutPostRedisplay();
     break;
+  case 'p':
+    mode = (mode==SHADER) ? 0 : SHADER;
+    glutPostRedisplay();
   default:
     break;
   }
@@ -1247,6 +1277,24 @@ void keyboard ( unsigned char key, int x, int y )
     // }
 
 
+}
+
+void on_exit(){
+	fprintf(stdout,"\n");
+
+#ifdef USE_FPGA
+	if (mode==FPGA) { 
+		PAF3dClose();
+		free(fpga_in);
+		free(fpga_out);
+	}
+#endif
+	
+
+  free(image);
+  free(depth);
+  free(color_depth);
+  free(profondeur);
 }
 
 
@@ -1408,23 +1456,12 @@ int main(int argc, char **argv)
   glutDisplayFunc(display);			                	// register Display Function
 //  glutIdleFunc( display );				        	// register Idle Function
   glutKeyboardFunc( keyboard );						// register Keyboard Handler
+  atexit( on_exit );
+  //glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
 
 
   glutMainLoop();
 
-#ifdef USE_FPGA
-	if (mode==FPGA) { 
-		PAF3dClose();
-		free(fpga_in);
-		free(fpga_out);
-	}
-#endif
-	
-
-  free(image);
-  free(depth);
-  free(color_depth);
-  free(profondeur);											// run GLUT mainloop
   return 0;
 }
 
