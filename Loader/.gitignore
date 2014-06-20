@@ -8,6 +8,8 @@ dependencies/
 CMakeFiles/
 CMakeCache*
 
+test
+
 
 *.o
 *.d
