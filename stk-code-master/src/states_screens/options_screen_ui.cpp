@@ -17,11 +17,10 @@
 
 #include "states_screens/options_screen_ui.hpp"
 
-#include "addons/news_manager.hpp"
+#include "addons/inetwork_http.hpp"
 #include "audio/music_manager.hpp"
 #include "audio/sfx_manager.hpp"
 #include "audio/sfx_base.hpp"
-#include "config/user_config.hpp"
 #include "guiengine/scalable_font.hpp"
 #include "guiengine/screen.hpp"
 #include "guiengine/widgets/button_widget.hpp"
@@ -31,23 +30,19 @@
 #include "guiengine/widgets/spinner_widget.hpp"
 #include "guiengine/widget.hpp"
 #include "io/file_manager.hpp"
-#include "online/request_manager.hpp"
 #include "states_screens/main_menu_screen.hpp"
 #include "states_screens/options_screen_audio.hpp"
 #include "states_screens/options_screen_input.hpp"
+#include "states_screens/options_screen_players.hpp"
 #include "states_screens/options_screen_video.hpp"
 #include "states_screens/state_manager.hpp"
-#include "states_screens/user_screen.hpp"
-#include "utils/log.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
 
-#include <algorithm>
 #include <iostream>
 #include <sstream>
 
 using namespace GUIEngine;
-using namespace Online;
 
 DEFINE_SCREEN_SINGLETON( OptionsScreenUI );
 
@@ -73,12 +68,12 @@ void OptionsScreenUI::loadedFromFile()
     skinSelector->clearLabels();
 
     std::set<std::string> skinFiles;
-    file_manager->listFiles(skinFiles /* out */, file_manager->getAsset(FileManager::SKIN,""),
-                            true /* make full path */ );
+    file_manager->listFiles(skinFiles /* out */, file_manager->getGUIDir() + "skins",
+                            true /* is full path */, true /* make full path */ );
 
     for (std::set<std::string>::iterator it = skinFiles.begin(); it != skinFiles.end(); it++)
     {
-        if(StringUtils::getExtension(*it)=="stkskin")
+        if ( (*it).find(".stkskin") != std::string::npos )
         {
             m_skins.push_back( *it );
         }
@@ -86,8 +81,8 @@ void OptionsScreenUI::loadedFromFile()
 
     if (m_skins.size() == 0)
     {
-        Log::warn("OptionsScreenUI", "Could not find a single skin, make sure that "
-                                     "the data files are correctly installed");
+        std::cerr << "WARNING: could not find a single skin, make sure that "
+                     "the data files are correctly installed\n";
         skinSelector->setDeactivated();
         return;
     }
@@ -129,11 +124,15 @@ void OptionsScreenUI::init()
     CheckBoxWidget* news = getWidget<CheckBoxWidget>("enable-internet");
     assert( news != NULL );
     news->setState( UserConfigParams::m_internet_status
-                                     ==RequestManager::IPERM_ALLOWED );
+                                            ==INetworkHttp::IPERM_ALLOWED );
+    CheckBoxWidget* min_gui = getWidget<CheckBoxWidget>("minimal-racegui");
+    assert( min_gui != NULL );
+    min_gui->setState( UserConfigParams::m_minimal_race_gui);
+    if (StateManager::get()->getGameState() == GUIEngine::INGAME_MENU)
+        min_gui->setDeactivated();
+    else
+        min_gui->setActivated();
 
-    CheckBoxWidget* show_login = getWidget<CheckBoxWidget>("show-login");
-    assert( show_login!= NULL );
-    show_login->setState( UserConfigParams::m_always_show_login_screen);
 
     // --- select the right skin in the spinner
     bool currSkinFound = false;
@@ -151,8 +150,7 @@ void OptionsScreenUI::init()
     }
     if (!currSkinFound)
     {
-        Log::warn("OptionsScreenUI",
-                  "Couldn't find current skin in the list of skins!");
+        std::cerr << "WARNING: couldn't find current skin in the list of skins!!\n";
         skinSelector->setValue(0);
         GUIEngine::reloadSkin();
     }
@@ -165,24 +163,12 @@ void OptionsScreenUI::init()
 
     const std::vector<std::string>* lang_list = translations->getLanguageList();
     const int amount = lang_list->size();
-
-    // The names need to be sorted alphabetically. Store the 2-letter
-    // language names in a mapping, to be able to get them from the
-    // user visible full name.
-    std::vector<std::string> nice_lang_list;
-    std::map<std::string, std::string> nice_name_2_id;
     for (int n=0; n<amount; n++)
     {
         std::string code_name = (*lang_list)[n];
-        std::string nice_name = tinygettext::Language::from_name(code_name).get_name();
-        nice_lang_list.push_back(nice_name);
-        nice_name_2_id[nice_name] = code_name;
-    }
-    std::sort(nice_lang_list.begin(), nice_lang_list.end());
-    for(unsigned int i=0; i<nice_lang_list.size(); i++)
-    {
-        list_widget->addItem(nice_name_2_id[nice_lang_list[i]],
-                              nice_lang_list[i].c_str());
+        std::string nice_name = tinygettext::Language::from_name(code_name.c_str()).get_name();
+        list_widget->addItem(code_name, core::stringw(code_name.c_str()) + " (" +
+                             nice_name.c_str() + ")");
     }
 
     list_widget->setSelectionID( list_widget->getItemID(UserConfigParams::m_language) );
@@ -210,7 +196,7 @@ void OptionsScreenUI::eventCallback(Widget* widget, const std::string& name, con
 
         if (selection == "tab_audio") StateManager::get()->replaceTopMostScreen(OptionsScreenAudio::getInstance());
         else if (selection == "tab_video") StateManager::get()->replaceTopMostScreen(OptionsScreenVideo::getInstance());
-        else if (selection == "tab_players") StateManager::get()->replaceTopMostScreen(TabbedUserScreen::getInstance());
+        else if (selection == "tab_players") StateManager::get()->replaceTopMostScreen(OptionsScreenPlayers::getInstance());
         else if (selection == "tab_controls") StateManager::get()->replaceTopMostScreen(OptionsScreenInput::getInstance());
     }
     else if(name == "back")
@@ -234,22 +220,28 @@ void OptionsScreenUI::eventCallback(Widget* widget, const std::string& name, con
     }
     else if (name=="enable-internet")
     {
-        CheckBoxWidget* internet = getWidget<CheckBoxWidget>("enable-internet");
-        assert( internet != NULL );
+        CheckBoxWidget* news = getWidget<CheckBoxWidget>("enable-internet");
+        assert( news != NULL );
+        if(INetworkHttp::get())
+        {
+            INetworkHttp::get()->stopNetworkThread();
+            INetworkHttp::destroy();
+        }
         UserConfigParams::m_internet_status =
-            internet->getState() ? RequestManager::IPERM_ALLOWED
-                                 : RequestManager::IPERM_NOT_ALLOWED;
-        // If internet gets enabled, re-initialise the addon manager (which
-        // happens in a separate thread) so that news.xml etc can be
-        // downloaded if necessary.
-        if(internet->getState())
-            NewsManager::get()->init(false);
+            news->getState() ? INetworkHttp::IPERM_ALLOWED
+                             : INetworkHttp::IPERM_NOT_ALLOWED;
+        INetworkHttp::create();
+        // Note that the network thread must be started after the assignment
+        // to network_http (since the thread might use network_http, otherwise
+        // a race condition can be introduced resulting in a crash).
+        INetworkHttp::get()->startNetworkThread();
     }
-    else if (name=="show-login")
+    else if (name=="minimal-racegui")
     {
-        CheckBoxWidget* show_login = getWidget<CheckBoxWidget>("show-login");
-        assert( show_login != NULL );
-        UserConfigParams::m_always_show_login_screen = show_login->getState();
+        CheckBoxWidget* min_gui = getWidget<CheckBoxWidget>("minimal-racegui");
+        assert( min_gui != NULL );
+        UserConfigParams::m_minimal_race_gui =
+            !UserConfigParams::m_minimal_race_gui;
     }
     else if (name == "language")
     {

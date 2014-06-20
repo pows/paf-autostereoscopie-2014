@@ -21,7 +21,6 @@
 #include "karts/kart_properties.hpp"
 #include "race/history.hpp"
 #include "tracks/track.hpp"
-#include "utils/log.hpp"
 
 #include <iostream>
 
@@ -86,22 +85,22 @@ bool WorldWithRank::setKartPosition(unsigned int kart_id,
     assert(m_position_setting_initialised);
     if(m_position_used[position-1])
     {
-        Log::error("[WorldWithRank]", "== TWO KARTS ARE BEING GIVEN THE SAME POSITION!! ==");
+        std::cerr << "== TWO KARTS ARE BEING GIVEN THE SAME POSITION!! ==\n";
         for (unsigned int j=0; j < m_position_index.size(); j++)
         {
             if (!m_position_used[j])
             {
-                Log::warn("WorldWithRank]", "No kart is yet set at position %u", j+1);
+                std::cout << "    No kart is yet set at position " << j+1
+                          << std::endl;
             }
             else
             {
-                Log::warn("WorldWithRank]", "Kart %u is at position %u",
-                            m_position_index[j], j);
+                std::cout << "    Kart " << m_position_index[j]
+                          << " is at position " << j << std::endl;
             }
         }
-        Log::warn("WorldWithRank]", "Kart %u is being given position %u,"
-                    "but this position is already taken",
-                    kart_id, position);
+        std::cout << "Kart " << kart_id << " is being given position "
+                  << position << ", but this position is already taken\n";
         return false;
     }
     m_position_used[position-1] = true;
@@ -135,7 +134,7 @@ unsigned int WorldWithRank::getNumberOfRescuePositions() const
 // ----------------------------------------------------------------------------
 /** Finds the starting position which is closest to the kart.
  *  \param kart The kart for which a rescue position needs to be determined.
- */
+ */ 
 unsigned int WorldWithRank::getRescuePositionIndex(AbstractKart *kart)
 {
     // find closest point to drop kart on

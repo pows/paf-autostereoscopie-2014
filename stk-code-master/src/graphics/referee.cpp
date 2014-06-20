@@ -44,8 +44,11 @@ video::ITexture      *Referee::m_st_traffic_lights[3]  = {NULL, NULL, NULL};
 void Referee::init()
 {
     assert(!m_st_referee_mesh);
-    const std::string filename=file_manager->getAssetChecked(FileManager::MODEL,
-                                                             "referee.xml", true);
+    const std::string filename=file_manager->getModelFile("referee.xml");
+    if(filename=="")
+    {
+        Log::fatal("referee", "Can't find referee.xml, aborting.");
+    }
     XMLNode *node = file_manager->createXMLTree(filename);
     if(!node)
     {
@@ -60,8 +63,7 @@ void Referee::init()
     node->get("model", &model_filename);
 
     m_st_referee_mesh = irr_driver->getAnimatedMesh(
-                                 file_manager->getAsset(FileManager::MODEL,
-                                                        model_filename)      );
+                     file_manager->getModelFile(model_filename) );
     if(!m_st_referee_mesh)
     {
         Log::fatal("referee", "Can't find referee model '%s', aborting.",
@@ -106,7 +108,14 @@ void Referee::init()
     }
     for(unsigned int i=0; i<3; i++)
     {
-        m_st_traffic_lights[i] = irr_driver->getTexture(FileManager::MODEL, colors[i]);
+        std::string full_path = file_manager->getTextureFile(colors[i]);
+        if(full_path.size()==0)
+        {
+            Log::fatal("referee",
+                       "Can't find texture '%s' for referee, aborting.",
+                       colors[i].c_str());
+        }
+        m_st_traffic_lights[i] = irr_driver->getTexture(full_path);
     }
 
 
@@ -164,8 +173,6 @@ Referee::Referee()
     m_scene_node->setScale(m_st_scale.toIrrVector());
     m_scene_node->setFrameLoop(m_st_first_start_frame,
                                m_st_last_start_frame);
-
-    irr_driver->applyObjectPassShader(m_scene_node);
 }   // Referee
 
 // ----------------------------------------------------------------------------
@@ -190,8 +197,6 @@ Referee::Referee(const AbstractKart &kart)
     m_scene_node->setPosition(core::vector3df(0, kart.getKartHeight() + 0.4f, 0));
     m_scene_node->setFrameLoop(m_st_first_rescue_frame,
                                m_st_last_rescue_frame);
-
-    irr_driver->applyObjectPassShader(m_scene_node);
 }   // Referee
 
 // ----------------------------------------------------------------------------

@@ -17,27 +17,24 @@
 
 #include "states_screens/addons_screen.hpp"
 
+#include <iostream>
+
 #include "addons/addons_manager.hpp"
-#include "addons/news_manager.hpp"
-#include "config/user_config.hpp"
+#include "addons/inetwork_http.hpp"
 #include "guiengine/CGUISpriteBank.h"
 #include "guiengine/modaldialog.hpp"
 #include "guiengine/scalable_font.hpp"
 #include "guiengine/widget.hpp"
 #include "guiengine/widgets/ribbon_widget.hpp"
 #include "io/file_manager.hpp"
-#include "online/request_manager.hpp"
 #include "states_screens/dialogs/addons_loading.hpp"
 #include "states_screens/dialogs/message_dialog.hpp"
 #include "states_screens/state_manager.hpp"
 #include "utils/translation.hpp"
 #include "utils/ptr_vector.hpp"
 
-#include <iostream>
-
 DEFINE_SCREEN_SINGLETON( AddonsScreen );
 
-using namespace Online;
 // ----------------------------------------------------------------------------
 
 AddonsScreen::AddonsScreen() : Screen("addons_screen.stkgui")
@@ -48,7 +45,7 @@ AddonsScreen::AddonsScreen() : Screen("addons_screen.stkgui")
     // I18N: Time filters for add-ons
     DateFilter filter_all = {_("All"), 0, 0, 0};
     DateFilter filter_1w = {_("1 week"), 0, 0, 7};
-    DateFilter filter_2w = {_("2 weeks"), 0, 0, 14};
+    DateFilter filter_2w = {_("2 weeks"), 0, 0, 12};
     DateFilter filter_1m = {_("1 month"), 0, 1, 0};
     DateFilter filter_3m = {_("3 months"), 0, 3, 0};
     DateFilter filter_6m = {_("6 months"), 0, 6, 0};
@@ -71,18 +68,18 @@ AddonsScreen::AddonsScreen() : Screen("addons_screen.stkgui")
 
 void AddonsScreen::loadedFromFile()
 {
-    video::ITexture* icon1 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,
-                                                     "package.png"         ));
-    video::ITexture* icon2 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,
-                                                     "no-package.png"      ));
-    video::ITexture* icon3 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,
-                                                     "package-update.png"  ));
-    video::ITexture* icon4 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,
-                                                     "package-featured.png"));
-    video::ITexture* icon5 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,
-                                                  "no-package-featured.png"));
-    video::ITexture* icon6 = irr_driver->getTexture( file_manager->getAsset(FileManager::GUI,
-                                                     "loading.png"));
+    video::ITexture* icon1 = irr_driver->getTexture( file_manager->getGUIDir()
+                                                    + "/package.png"         );
+    video::ITexture* icon2 = irr_driver->getTexture( file_manager->getGUIDir()
+                                                    + "/no-package.png"      );
+    video::ITexture* icon3 = irr_driver->getTexture( file_manager->getGUIDir()
+                                                    + "/package-update.png"  );
+    video::ITexture* icon4 = irr_driver->getTexture( file_manager->getGUIDir()
+                                                    + "/package-featured.png");
+    video::ITexture* icon5 = irr_driver->getTexture( file_manager->getGUIDir()
+                                                 + "/no-package-featured.png");
+    video::ITexture* icon6 = irr_driver->getTexture( file_manager->getGUIDir()
+                                                    + "/loading.png");
 
     m_icon_bank = new irr::gui::STKModifiedSpriteBank( GUIEngine::getGUIEnv());
     m_icon_installed     = m_icon_bank->addTextureAsSprite(icon1);
@@ -107,13 +104,13 @@ void AddonsScreen::beforeAddingWidget()
         getWidget<GUIEngine::ListWidget>("list_addons");
     assert(w_list != NULL);
     w_list->clearColumns();
-    w_list->addColumn( _("Add-on name"), 3 );
+    w_list->addColumn( _("Add-on name"), 2 );
     w_list->addColumn( _("Updated date"), 1 );
     
     GUIEngine::SpinnerWidget* w_filter_date =
                         getWidget<GUIEngine::SpinnerWidget>("filter_date");
     w_filter_date->m_properties[GUIEngine::PROP_MIN_VALUE] = "0";
-    w_filter_date->m_properties[GUIEngine::PROP_MAX_VALUE] =
+    w_filter_date->m_properties[GUIEngine::PROP_MAX_VALUE] = 
                             StringUtils::toString(m_date_filters.size() - 1);
     
     for (unsigned int n = 0; n < m_date_filters.size(); n++)
@@ -145,6 +142,8 @@ void AddonsScreen::init()
 
     getWidget<GUIEngine::RibbonWidget>("category")->setDeactivated();
 
+    GUIEngine::getFont()->setTabStop(0.66f);
+
     if(UserConfigParams::logAddons())
         std::cout << "[addons] Using directory <" + file_manager->getAddonsDir()
               << ">\n";
@@ -158,7 +157,7 @@ void AddonsScreen::init()
     w_list->setIcons(m_icon_bank, (int)(m_icon_height));
 
     m_type = "kart";
-    if (UserConfigParams::m_internet_status != RequestManager::IPERM_ALLOWED)
+    if (UserConfigParams::m_internet_status != INetworkHttp::IPERM_ALLOWED)
         getWidget<GUIEngine::IconButtonWidget>("reload")->setDeactivated();
     else
         getWidget<GUIEngine::IconButtonWidget>("reload")->setActivated();
@@ -191,6 +190,8 @@ void AddonsScreen::unloaded()
 
 void AddonsScreen::tearDown()
 {
+    // return tab stop to the center when leaving this screen!!
+    GUIEngine::getFont()->setTabStop(0.5f);
 }
 
 // ----------------------------------------------------------------------------
@@ -211,9 +212,9 @@ void AddonsScreen::loadList()
                         getWidget<GUIEngine::SpinnerWidget>("filter_date");
     int date_index = w_filter_date->getValue();
     StkTime::TimeType date = StkTime::getTimeSinceEpoch();
-    date = StkTime::addInterval(date,
-                -m_date_filters[date_index].year,
-                -m_date_filters[date_index].month,
+    date = StkTime::addInterval(date, 
+                -m_date_filters[date_index].year, 
+                -m_date_filters[date_index].month, 
                 -m_date_filters[date_index].day);
 
     // Get the filter by rating.
@@ -225,7 +226,7 @@ void AddonsScreen::loadList()
     PtrVector<const Addon, REF> sorted_list;
     for(unsigned int i=0; i<addons_manager->getNumAddons(); i++)
     {
-        const Addon & addon = addons_manager->getAddon(i);
+        const Addon &addon = addons_manager->getAddon(i);
         // Ignore addons of a different type
         if(addon.getType()!=m_type) continue;
         // Ignore invisible addons
@@ -234,9 +235,8 @@ void AddonsScreen::loadList()
         if(!UserConfigParams::m_artist_debug_mode &&
             !addon.testStatus(Addon::AS_APPROVED)    )
             continue;
-        if (!addon.isInstalled() && (addons_manager->wasError() ||
-                                     UserConfigParams::m_internet_status !=
-                                     RequestManager::IPERM_ALLOWED ))
+        if (!addon.isInstalled() && (addons_manager->wasError()
+                || UserConfigParams::m_internet_status != INetworkHttp::IPERM_ALLOWED ))
             continue;
 
         // Filter by rating.
@@ -259,7 +259,7 @@ void AddonsScreen::loadList()
         getWidget<GUIEngine::ListWidget>("list_addons");
     w_list->clear();
 
-    for(unsigned int i=0; i<sorted_list.size(); i++)
+    for(int i=0; i<sorted_list.size(); i++)
     {
         const Addon *addon = &(sorted_list[i]);
         // Ignore addons of a different type
@@ -281,13 +281,10 @@ void AddonsScreen::loadList()
             s = (addon->getName()+L"\t" +
                     core::stringc(addon->getDateAsString().c_str())).c_str();
 
-       //FIXME I'd like to move this to CGUISTKListBox.cpp
-
-       /* gui::IGUIFont* font = GUIEngine::getFont();
+        gui::IGUIFont* font = GUIEngine::getFont();
 
         // first column is 0.666% of the list's width.
         // and icon width == icon height.
-
         const unsigned int available_width = (int)(w_list->m_w*0.6666f
                                                    - m_icon_height);
         if (font->getDimension(s.c_str()).Width > available_width)
@@ -296,7 +293,7 @@ void AddonsScreen::loadList()
             s.append("...");
         }
         else
-        {*/
+        {
             if (addon->getDesigner().size() == 0)
             {
                 s = addon->getName();
@@ -307,7 +304,7 @@ void AddonsScreen::loadList()
                 s = _C("addons", "%s by %s", addon->getName().c_str(),
                         addon->getDesigner().c_str());
             }
-            /*
+
             // check if text is too long to fit
             if (font->getDimension(s.c_str()).Width >  available_width)
             {
@@ -347,9 +344,10 @@ void AddonsScreen::loadList()
                 }   // for nlines.size()
 
                 s = final_string;
-                */
-            //}   // if
-        //}
+            }   // if
+            s.append("\t");
+            s.append(addon->getDateAsString().c_str());
+        }
 
         // we have no icon for featured+updateme, so if an add-on is updatable
         // forget about the featured icon
@@ -359,10 +357,7 @@ void AddonsScreen::loadList()
             icon += 2;
         }
 
-        std::vector<GUIEngine::ListWidget::ListCell> row;
-        row.push_back(GUIEngine::ListWidget::ListCell(s.c_str(), icon, 3, false));
-        row.push_back(GUIEngine::ListWidget::ListCell(addon->getDateAsString().c_str(), -1, 1, true));
-        w_list->addItem(addon->getId(), row);
+        w_list->addItem(addon->getId(), s.c_str(), icon);
 
         // Highlight if it's not approved in artists debug mode.
         if(UserConfigParams::m_artist_debug_mode &&
@@ -402,13 +397,13 @@ void AddonsScreen::onColumnClicked(int column_id)
 
     switch(column_id)
     {
-    case 0:
-        Addon::setSortOrder(m_sort_default ? Addon::SO_DEFAULT : Addon::SO_NAME);
+    case 0: 
+        Addon::setSortOrder(m_sort_default ? Addon::SO_DEFAULT : Addon::SO_NAME); 
         break;
     case 1:
-        Addon::setSortOrder(m_sort_default ? Addon::SO_DEFAULT : Addon::SO_DATE);
+        Addon::setSortOrder(m_sort_default ? Addon::SO_DEFAULT : Addon::SO_DATE); 
         break;
-    default: assert(0); break;
+    default: assert(0);
     }   // switch
     /** \brief Toggle the sort order after column click **/
     loadList();
@@ -428,14 +423,16 @@ void AddonsScreen::eventCallback(GUIEngine::Widget* widget,
         if (!m_reloading)
         {
             m_reloading = true;
-            NewsManager::get()->init(true);
+            INetworkHttp::get()->insertReInit();
 
             GUIEngine::ListWidget* w_list =
-                       getWidget<GUIEngine::ListWidget>("list_addons");
+            getWidget<GUIEngine::ListWidget>("list_addons");
             w_list->clear();
 
             w_list->addItem("spacer", L"");
-            w_list->addItem("loading",_("Please wait while addons are updated"), m_icon_loading);
+            w_list->addItem("loading",
+                            _("Please wait while addons are updated"),
+                            m_icon_loading);
         }
     }
 
@@ -448,7 +445,7 @@ void AddonsScreen::eventCallback(GUIEngine::Widget* widget,
         if (!id.empty() && addons_manager->getAddon(id) != NULL)
         {
             m_selected_index = list->getSelectionID();
-            new AddonsLoading(id);
+            new AddonsLoading(0.8f, 0.8f, id);
         }
     }
     if (name == "category")
@@ -498,11 +495,11 @@ void AddonsScreen::setLastSelected()
 
 // ----------------------------------------------------------------------------
 
-void AddonsScreen::onUpdate(float dt)
+void AddonsScreen::onUpdate(float dt, irr::video::IVideoDriver*)
 {
     if (m_reloading)
     {
-        if(UserConfigParams::m_internet_status!=RequestManager::IPERM_ALLOWED)
+        if(UserConfigParams::m_internet_status!=INetworkHttp::IPERM_ALLOWED)
         {
             // not allowed to access the net. how did you get to this menu in
             // the first place??

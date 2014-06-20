@@ -19,6 +19,7 @@
 #ifndef HEADER_KART_CONTROL_HPP
 #define HEADER_KART_CONTROL_HPP
 
+#include "network/message.hpp"
 
 /**
   * \ingroup controller
@@ -37,13 +38,13 @@ public:
     /** The skidding control state: SC_NONE: not pressed;
         SC_NO_DIRECTION: pressed, but no steering;
         SC_LEFT/RIGHT: pressed in the specified direction. */
-    enum  SkidControl {SC_NONE, SC_NO_DIRECTION, SC_LEFT, SC_RIGHT}
+    enum  SkidControl {SC_NONE, SC_NO_DIRECTION, SC_LEFT, SC_RIGHT}  
           m_skid;
     /** True if rescue is selected. */
     bool  m_rescue;
     /** True if fire is selected. */
     bool  m_fire;
-    /** True if the kart looks (and shoots) backwards. */
+    /** True if the kart looks (and shoots) backwards. */ 
     bool  m_look_back;
 
     KartControl()
@@ -51,8 +52,17 @@ public:
         reset();
     }
     // ------------------------------------------------------------------------
+    /** Construct kart control from a Message (i.e. unserialise)             */
+    KartControl(Message *m)
+    {
+        m_steer     = m->getFloat();
+        m_accel     = m->getFloat();
+        char c      = m->getChar();
+        setButtonsCompressed(c);
+    }   // KartControl(Message*)
+    // ------------------------------------------------------------------------
     /** Resets all controls. */
-    void reset()
+    void reset() 
     {
         m_steer     = 0.0f;
         m_accel     = 0.0f;
@@ -64,9 +74,20 @@ public:
         m_look_back = false;
     }   // reset
     // ------------------------------------------------------------------------
+    /** Return the serialised size in bytes.                                 */
+    static int getLength() { return 9; }
+    // ------------------------------------------------------------------------
+    /** Serialises the kart control into a message.                          */
+    void serialise(Message *m) const
+    {
+        m->addFloat(m_steer);
+        m->addFloat(m_accel);
+        m->addChar(getButtonsCompressed());
+    }   // compress
+    // ------------------------------------------------------------------------
     void uncompress(char *c)
     {
-        m_steer = ((float*)c)[0];
+        m_steer = ((float*)c)[0];  
         m_accel = ((float*)c)[1];
         setButtonsCompressed(c[8]);
     }   // uncompress

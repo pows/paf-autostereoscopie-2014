@@ -258,16 +258,24 @@ bool GamePadDevice::processAndMapInput(Input::InputType type, const int id,
         if (!m_axis_ok[id]) return false;
     }
 
-
-    if (mode == InputManager::INGAME)
+    if (m_configuration != NULL)
     {
-        success = m_configuration->getGameAction(type, id, value, action);
+        if (mode == InputManager::INGAME)
+        {
+            success = m_configuration->getGameAction(type, id, value, action);
+        }
+        else if (abs(*value) > Input::MAX_VALUE/2)
+        {
+            // bindings can only be accessed in game and menu modes
+            assert(mode == InputManager::MENU);
+            success = m_configuration->getMenuAction(type, id, value, action);
+        }
     }
-    else if (abs(*value) > Input::MAX_VALUE/2)
+    else
     {
-        // bindings can only be accessed in game and menu modes
-        assert(mode == InputManager::MENU);
-        success = m_configuration->getMenuAction(type, id, value, action);
+        fprintf(stderr, "processAndMapInput() called on improperly "
+                        "initialized GamePadDevice\n");
+        abort();
     }
 
     return success;

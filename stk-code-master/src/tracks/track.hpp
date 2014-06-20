@@ -35,7 +35,6 @@ namespace irr
     namespace scene { class IMesh; class ILightSceneNode; }
 }
 using namespace irr;
-class ModelDefinitionLoader;
 
 #include "LinearMath/btTransform.h"
 
@@ -206,7 +205,6 @@ private:
     /** True if this track (textures and track data) should be cached. Used
      *  for the overworld. */
     bool m_cache_track;
-    
 
 #ifdef DEBUG
     /** A list of textures that were cached before the track is loaded.
@@ -223,7 +221,7 @@ private:
 #endif
 
     PtrVector<ParticleEmitter>      m_all_emitters;
-    scene::ISceneNode  *m_sun;
+    scene::ILightSceneNode  *m_sun;
     /** Used to collect the triangles for the bullet mesh. */
     TriangleMesh*            m_track_mesh;
     /** Used to collect the triangles which do not have a physical
@@ -280,8 +278,6 @@ private:
     /** A list of the textures for the sky to use. It contains one texture
      *  in case of a dome, and 6 textures for a box. */
     std::vector<video::ITexture*> m_sky_textures;
-
-    std::vector<video::ITexture*> m_spherical_harmonics_textures;
 
     /** Used if m_sky_type is SKY_COLOR only */
     irr::video::SColor m_sky_color;
@@ -350,18 +346,13 @@ private:
     /** Name of the track to display. */
     std::string         m_name;
 
-    /** The name used in sorting the track. */
-    core::stringw       m_sort_name;
-
     bool                m_use_fog;
     /** True if this track supports using smoothed normals. */
     bool                m_smooth_normals;
 
-    float               m_fog_max;
+    float               m_fog_density;
     float               m_fog_start;
     float               m_fog_end;
-    float               m_fog_height_start;
-    float               m_fog_height_end;
     core::vector3df     m_sun_position;
     /** The current ambient color for each kart. */
     video::SColor       m_ambient_color;
@@ -376,24 +367,6 @@ private:
     float                   m_minimap_x_scale;
     float                   m_minimap_y_scale;
 
-    bool m_clouds;
-
-    bool m_bloom;
-    float m_bloom_threshold;
-
-    bool m_lensflare;
-    bool m_godrays;
-    bool m_shadows;
-
-    float m_displacement_speed;
-    float m_caustics_speed;
-    
-    /** The levels for color correction
-     * m_color_inlevel(black, gamma, white)
-     * m_color_outlevel(black, white)*/
-    core::vector3df m_color_inlevel;
-    core::vector2df m_color_outlevel;
-
     /** List of all bezier curves in the track - for e.g. camera, ... */
     std::vector<BezierCurve*> m_all_curves;
 
@@ -406,9 +379,6 @@ private:
                              std::vector<MusicInformation*>& m_music   );
     void loadCurves(const XMLNode &node);
     void handleSky(const XMLNode &root, const std::string &filename);
-    void loadObjects(const XMLNode* root, const std::string& path, ModelDefinitionLoader& lod_loader,
-                     bool create_lod_definitions, scene::ISceneNode* parent,
-                     std::map<std::string, XMLNode*>& library_nodes);
 
 public:
 
@@ -431,9 +401,6 @@ public:
     void               adjustForFog(scene::IMesh* mesh,
                                     scene::ISceneNode* parent_scene_node);
     void               itemCommand(const XMLNode *node);
-    core::stringw      getName() const;
-    core::stringw      getSortName() const;
-    bool               isInGroup(const std::string &group_name);
     const core::vector3df& getSunRotation();
     /** Sets the current ambient color for a kart with index k. */
     void               setAmbientColor(const video::SColor &color,
@@ -477,6 +444,11 @@ public:
     // ------------------------------------------------------------------------
     /** Returns a unique identifier for this track (the directory name). */
     const std::string& getIdent          () const {return m_ident;            }
+    // ------------------------------------------------------------------------
+    /** Returns the name of the track, which is e.g. displayed on the screen.
+        \note this is the LTR name, invoke fribidi as needed. */
+    const wchar_t* getName               () const
+                             {return translations->w_gettext(m_name.c_str()); }
     // ------------------------------------------------------------------------
     /** Returns all groups this track belongs to. */
     const std::vector<std::string>&
@@ -531,9 +503,6 @@ public:
     /** Returns the number of modes available for this track. */
     unsigned int       getNumberOfModes() const { return m_all_modes.size();  }
     // ------------------------------------------------------------------------
-    /** Returns number of completed challenges. */
-    unsigned int getNumOfCompletedChallenges();
-    // ------------------------------------------------------------------------
     /** Returns the name of the i-th. mode. */
     const std::string &getModeName(unsigned int i) const
                                               { return m_all_modes[i].m_name; }
@@ -565,15 +534,7 @@ public:
     // ------------------------------------------------------------------------
     float getFogEnd()    const { return m_fog_end; }
     // ------------------------------------------------------------------------
-    float getFogStartHeight()  const { return m_fog_height_start; }
-    // ------------------------------------------------------------------------
-    float getFogEndHeight()    const { return m_fog_height_end; }
-    // ------------------------------------------------------------------------
-    float getFogMax()    const { return m_fog_max; }
-    // ------------------------------------------------------------------------
     video::SColor getFogColor() const { return m_fog_color; }
-    // ------------------------------------------------------------------------
-    video::SColor getSunColor() const { return m_sun_diffuse_color; }
     // ------------------------------------------------------------------------
     /** Whether this is an "internal" track. If so it won't be offered
      * in the track selection screen. */
@@ -596,24 +557,6 @@ public:
 
     const std::vector<Subtitle>& getSubtitles() const { return m_subtitles; }
 
-    bool hasClouds() const { return m_clouds; }
-
-    bool getBloom() const { return m_bloom; }
-    float getBloomThreshold() const { return m_bloom_threshold; }
-    
-    /** Return the color levels for color correction shader */
-    core::vector3df getColorLevelIn() const { return m_color_inlevel; }
-    core::vector2df getColorLevelOut() const { return m_color_outlevel; }
-
-    bool hasLensFlare() const { return m_lensflare; }
-    bool hasGodRays() const { return m_godrays; }
-    bool hasShadows() const { return m_shadows; }
-    
-    void addNode(scene::ISceneNode* node) { m_all_nodes.push_back(node); }
-
-    float getDisplacementSpeed() const { return m_displacement_speed; }
-    float getCausticsSpeed() const { return m_caustics_speed; }
-    bool operator<(const Track &other) const;
 };   // class Track
 
 #endif

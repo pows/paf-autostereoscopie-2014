@@ -27,17 +27,13 @@
 
 #include <string>
 
-#include "config/player_profile.hpp"
+#include "config/player.hpp"
 #include "guiengine/abstract_state_manager.hpp"
 #include "utils/ptr_vector.hpp"
 
 class AbstractKart;
 class InputDevice;
 struct Input;
-namespace Online
-{
-    class OnlineProfile;
-}
 
 namespace GUIEngine
 {
@@ -185,7 +181,7 @@ public:
     int createActivePlayer(PlayerProfile *profile, InputDevice *device);
     void removeActivePlayer(int id);
 
-    unsigned int activePlayerCount();
+    int activePlayerCount();
     void resetActivePlayers();
 
     /** \return whether to reduce FPS at the moment

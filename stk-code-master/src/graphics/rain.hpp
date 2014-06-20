@@ -25,16 +25,23 @@ class PerCameraNode;
 #include <vector3d.h>
 namespace irr
 {
-    namespace video { class SMaterial; class ITexture; }
+    namespace video { class SMaterial; }
     namespace scene { class ICameraSceneNode; class ISceneNode; }
 }
 using namespace irr;
+
+const int RAIN_RING_COUNT = 5;
 
 class SFXBase;
 
 class Rain
 {
-    PerCameraNode* m_node;
+    PerCameraNode* m_node[RAIN_RING_COUNT];
+
+    std::vector<irr::video::SMaterial*> m_materials;
+
+    float m_x[RAIN_RING_COUNT];
+    float m_y[RAIN_RING_COUNT];
 
     float m_next_lightning;
     bool m_lightning;
@@ -42,7 +49,7 @@ class Rain
 
 public:
     Rain(Camera* camera, irr::scene::ISceneNode* parent);
-    virtual ~Rain();
+    ~Rain();
 
     void update(float dt);
     void setPosition(const irr::core::vector3df& position);

@@ -21,7 +21,6 @@
 #include "utils/string_utils.hpp"
 
 #include "utils/log.hpp"
-#include "utils/time.hpp"
 
 #include "coreutil.h"
 
@@ -115,24 +114,6 @@ namespace StringUtils
     }   // getExtension
 
     //-------------------------------------------------------------------------
-    /** Checks if the input string is not empty. ( = has characters different
-     *  from a space).
-     */
-    bool notEmpty(const irr::core::stringw& input)
-    {
-        const int size = input.size();
-        int nonEmptyChars = 0;
-        for (int n=0; n<size; n++)
-        {
-            if (input[n] != L' ')
-            {
-                nonEmptyChars++;
-            }
-        }
-        return (nonEmptyChars > 0);
-    }   // getExtension
-
-    //-------------------------------------------------------------------------
     /** Returns a string converted to upper case.
      */
     std::string toUpperCase(const std::string& str)
@@ -196,7 +177,7 @@ namespace StringUtils
         }
         catch (std::exception& e)
         {
-            Log::error("StringUtils",
+            Log::error("StringUtils", 
                        "Error in split(std::string) : %s @ line %i : %s.",
                      __FILE__, __LINE__, e.what());
             Log::error("StringUtils", "Splitting '%s'.", s.c_str());
@@ -266,18 +247,6 @@ namespace StringUtils
     }   // split
 
 
-    std::vector<uint32_t> splitToUInt(const std::string& s, char c, bool keepSplitChar)
-    {
-        std::vector<std::string> parts = split(s, c, keepSplitChar);
-        std::vector<uint32_t> ints;
-        for(unsigned int i = 0; i < parts.size(); ++i)
-        {
-           ints.push_back(atoi(parts[i].c_str()));
-        }
-        return ints;
-    }
-
-
     // ------------------------------------------------------------------------
     /** Splits a : separated string (like PATH) into its individual components.
      *  It especially handles Windows-style paths (c:/mydir1:d:/mydir2)
@@ -326,7 +295,7 @@ namespace StringUtils
         catch (std::exception& e)
         {
             (void)e;  // avoid warning about unused variable
-            Log::fatal("StringUtils",
+            Log::fatal("StringUtils", 
                 "Fatal error in splitPath : %s @ line %i: '%s'.",
                         __FILE__, __LINE__, path.c_str());
             exit(1);
@@ -357,7 +326,7 @@ namespace StringUtils
                     {
                         if (insertValID >= all_vals.size())
                         {
-                            Log::warn("StringUtils",
+                            Log::warn("StringUtils", 
                                       "insertValues: "
                                       "Invalid number of arguments in '%s'.",
                                       s.c_str());
@@ -396,7 +365,7 @@ namespace StringUtils
         catch (std::exception& e)
         {
             (void)e;  // avoid warning about unused variable
-            Log::fatal("StringUtils",
+            Log::fatal("StringUtils", 
                        "Fatal error in insertValues(std::string) : %s @ "
                        "line %i: '%s'", __FILE__, __LINE__, s.c_str());
             exit(1);
@@ -525,36 +494,7 @@ namespace StringUtils
     }   // timeToString
 
     // ------------------------------------------------------------------------
-    /** Shows a increasing number of dots.
-      * \param interval A float representing the time it takes to add a new dot
-      * \param max_dots The number of dots used. Defaults to 3.
-      */
-    irr::core::stringw loadingDots(float interval, int max_dots)
-    {
-        int nr_dots = int(floor(StkTime::getRealTime() / interval)) 
-                    % (max_dots + 1);
-        return irr::core::stringw((std::string(nr_dots, '.') + 
-                                   std::string(max_dots - nr_dots, ' ')).c_str());
-    }   // loadingDots
 
-    // ------------------------------------------------------------------------
-    /** Returns the string given with loadingDots appended. A simple
-     *  convenience function to type less in calls.
-     *  \parameter s The string to which the loading dots are appended.
-     */
-    irr::core::stringw loadingDots(const wchar_t *s)
-    {
-        return irr::core::stringw(s) + loadingDots();
-    }   // loadingDots
-
-    // ------------------------------------------------------------------------
-    /** Replaces values in a string.
-     * \param other string in which to replace stuff
-     * \param from  pattern to remove from the string
-     * \param to    pattern to insert instead
-     * \return      a string with all occurrences of \c from replaced by
-     *              occurrences of \c to
-     */
     std::string replace(const std::string& other, const std::string& from,
                         const std::string& to)
     {
@@ -690,6 +630,19 @@ namespace StringUtils
     }   // encodeToHtmlEntities
 
     // ------------------------------------------------------------------------
+
+    unsigned int simpleHash(const char* input)
+    {
+         int hash = 0;
+         for (int n=0; input[n] != 0; n++)
+         {
+            hash += (hash << (hash & 0xF)) ^ input[n];
+         }
+
+         return hash;
+    }
+
+    // ------------------------------------------------------------------------
     /** Converts a version string (in the form of 'X.Y.Za-rcU' into an
      *  integer number.
      *  \param s The version string to convert.
@@ -742,7 +695,6 @@ namespace StringUtils
             printf("Invalid version string '%s'.\n", s.c_str());
         return version;
     }   // versionToInt
-
 } // namespace StringUtils
 
 

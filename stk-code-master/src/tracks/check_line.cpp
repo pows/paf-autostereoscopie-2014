@@ -18,7 +18,6 @@
 
 #include "tracks/check_line.hpp"
 
-#include "config/user_config.hpp"
 #include "graphics/irr_driver.hpp"
 #include "io/xml_node.hpp"
 #include "karts/abstract_kart.hpp"

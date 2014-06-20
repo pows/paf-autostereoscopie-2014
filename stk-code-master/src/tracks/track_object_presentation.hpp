@@ -24,7 +24,7 @@
 #include <IAnimatedMeshSceneNode.h>
 namespace irr
 {
-    namespace scene { class IAnimatedMesh; class IMeshSceneNode; class ISceneNode; }
+    namespace scene { class IAnimatedMesh; class ISceneNode; }
 }
 using namespace irr;
 
@@ -40,8 +40,6 @@ class SFXBase;
 class ParticleEmitter;
 class PhysicalObject;
 class ThreeDAnimation;
-class ModelDefinitionLoader;
-class STKInstancedSceneNode;
 
 /**
  * \ingroup tracks
@@ -83,7 +81,6 @@ public:
                       const core::vector3df& scale) {}
 
     virtual const core::vector3df& getPosition() const { return m_init_xyz; }
-    virtual const core::vector3df  getAbsolutePosition() const { return m_init_xyz; }
     virtual const core::vector3df& getRotation() const { return m_init_hpr; }
     virtual const core::vector3df& getScale() const { return m_init_scale; }
 
@@ -116,18 +113,7 @@ public:
         m_node = NULL;
     }
 
-    TrackObjectPresentationSceneNode(
-        scene::ISceneNode* node,
-        const core::vector3df& xyz,
-        const core::vector3df& hpr,
-        const core::vector3df& scale) :
-        TrackObjectPresentation(xyz, hpr, scale)
-    {
-        m_node = node;
-    }
-
     virtual const core::vector3df& getPosition() const OVERRIDE;
-    virtual const core::vector3df  getAbsolutePosition() const OVERRIDE;
     virtual const core::vector3df& getRotation() const OVERRIDE;
     virtual const core::vector3df& getScale() const OVERRIDE;
     virtual void move(const core::vector3df& xyz, const core::vector3df& hpr,
@@ -161,24 +147,8 @@ class TrackObjectPresentationLOD : public TrackObjectPresentationSceneNode
 {
 public:
 
-    TrackObjectPresentationLOD(const XMLNode& xml_node,
-                               scene::ISceneNode* parent,
-                               ModelDefinitionLoader& model_def_loader);
+    TrackObjectPresentationLOD(const XMLNode& xml_node, LODNode* lod_node);
     virtual ~TrackObjectPresentationLOD();
-};
-
-class TrackObjectPresentationInstancing : public TrackObjectPresentationSceneNode
-{
-    STKInstancedSceneNode* m_instancing_group;
-    scene::IMeshSceneNode* m_fallback_scene_node;
-public:
-
-    TrackObjectPresentationInstancing(const XMLNode& xml_node,
-        scene::ISceneNode* parent,
-        ModelDefinitionLoader& model_def_loader);
-    virtual ~TrackObjectPresentationInstancing();
-
-    STKInstancedSceneNode* getInstancingGroup() { return m_instancing_group;  }
 };
 
 /**
@@ -195,34 +165,24 @@ private:
     /** True if it is a looped animation. */
     bool                    m_is_looped;
 
-    /** True if the object is in the skybox */
-    bool                    m_is_in_skybox;
-
     /** Start frame of the animation to be played. */
     unsigned int            m_frame_start;
 
     /** End frame of the animation to be played. */
     unsigned int            m_frame_end;
 
-    std::string             m_model_file;
-
-    void init(const XMLNode* xml_node, scene::ISceneNode* parent, bool enabled);
+    void init(const XMLNode* xml_node, bool enabled);
 
 public:
-    TrackObjectPresentationMesh(const XMLNode& xml_node, bool enabled, scene::ISceneNode* parent);
+    TrackObjectPresentationMesh(const XMLNode& xml_node, bool enabled);
 
     TrackObjectPresentationMesh(
         const std::string& model_file, const core::vector3df& xyz,
-        const core::vector3df& hpr, const core::vector3df& scale);
-    TrackObjectPresentationMesh(
-        scene::IAnimatedMesh* mesh, const core::vector3df& xyz,
         const core::vector3df& hpr, const core::vector3df& scale);
 
     virtual ~TrackObjectPresentationMesh();
 
     virtual void reset() OVERRIDE;
-
-    const std::string& getModelFile() const { return m_model_file; }
 };
 
 /**
@@ -244,7 +204,7 @@ private:
 
 public:
 
-    TrackObjectPresentationSound(const XMLNode& xml_node, scene::ISceneNode* parent);
+    TrackObjectPresentationSound(const XMLNode& xml_node);
     virtual ~TrackObjectPresentationSound();
     virtual void onTriggerItemApproached(Item* who) OVERRIDE;
     virtual void update(float dt) OVERRIDE;
@@ -272,7 +232,7 @@ class TrackObjectPresentationBillboard : public TrackObjectPresentationSceneNode
     float m_fade_out_start;
     float m_fade_out_end;
 public:
-    TrackObjectPresentationBillboard(const XMLNode& xml_node, scene::ISceneNode* parent);
+    TrackObjectPresentationBillboard(const XMLNode& xml_node);
     virtual ~TrackObjectPresentationBillboard();
     virtual void update(float dt) OVERRIDE;
 };
@@ -290,7 +250,7 @@ private:
     std::string m_trigger_condition;
 
 public:
-    TrackObjectPresentationParticles(const XMLNode& xml_node, scene::ISceneNode* parent);
+    TrackObjectPresentationParticles(const XMLNode& xml_node);
     virtual ~TrackObjectPresentationParticles();
 
     virtual void update(float dt) OVERRIDE;
@@ -299,23 +259,6 @@ public:
 
     void triggerParticles();
 };
-
-/**
-* \ingroup tracks
-* A track object representation that consists of a light emitter
-*/
-class TrackObjectPresentationLight : public TrackObjectPresentationSceneNode
-{
-private:
-    video::SColor m_color;
-    float m_distance;
-    float m_energy;
-
-public:
-    TrackObjectPresentationLight(const XMLNode& xml_node, scene::ISceneNode* parent);
-    virtual ~TrackObjectPresentationLight();
-};
-
 
 /**
  * \ingroup tracks
@@ -338,7 +281,7 @@ public:
     virtual ~TrackObjectPresentationActionTrigger() {}
 
     virtual void onTriggerItemApproached(Item* who) OVERRIDE;
-
+    
     virtual void reset() OVERRIDE { m_action_active = true; }
 };
 

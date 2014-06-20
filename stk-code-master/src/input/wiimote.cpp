@@ -20,7 +20,6 @@
 
 #include "input/wiimote.hpp"
 
-#include "config/user_config.hpp"
 #include "input/device_manager.hpp"
 #include "utils/string_utils.hpp"
 

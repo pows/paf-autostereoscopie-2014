@@ -24,11 +24,7 @@
 #include <ICameraSceneNode.h>
 
 #include "config/user_config.hpp"
-#include "graphics/callbacks.hpp"
 #include "graphics/irr_driver.hpp"
-#include "graphics/screenquad.hpp"
-#include "graphics/shaders.hpp"
-#include "graphics/rtts.hpp"
 #include "io/file_manager.hpp"
 #include "io/xml_node.hpp"
 #include "modes/world.hpp"
@@ -638,7 +634,7 @@ void QuadGraph::computeDistanceFromStart(unsigned int node, float new_distance)
  *  distance from start.
  *  \param indx Index of the node for which to increase the distance.
  *  \param delta Amount by which to increase the distance.
- *  \param recursive_count Counts how often this function was called
+ *  \param recursive_count Counts how often this function was called 
  *         recursively in order to catch incorrect graphs that contain loops.
  */
 void QuadGraph::updateDistancesForAllSuccessors(unsigned int indx, float delta,
@@ -669,7 +665,7 @@ void QuadGraph::updateDistancesForAllSuccessors(unsigned int indx, float delta,
         if(g.getDistanceFromStart()+g.getDistanceToSuccessor(i) >
             g_next.getDistanceFromStart())
         {
-            updateDistancesForAllSuccessors(g.getSuccessor(i), delta,
+            updateDistancesForAllSuccessors(g.getSuccessor(i), delta, 
                                             recursive_count);
         }
     }
@@ -970,12 +966,10 @@ int QuadGraph::findOutOfRoadSector(const Vec3& xyz,
 //-----------------------------------------------------------------------------
 /** Takes a snapshot of the driveline quads so they can be used as minimap.
  */
-video::ITexture *QuadGraph::makeMiniMap(const core::dimension2du &origdimension,
+video::ITexture *QuadGraph::makeMiniMap(const core::dimension2du &dimension,
                                         const std::string &name,
                                         const video::SColor &fill_color)
 {
-    const core::dimension2du dimension = origdimension * 2;
-
     IrrDriver::RTTProvider rttProvider(dimension, name, true);
     video::SColor red(128, 255, 0, 0);
     createMesh(/*show_invisible part of the track*/ false,
@@ -983,7 +977,7 @@ video::ITexture *QuadGraph::makeMiniMap(const core::dimension2du &origdimension,
                /*track_color*/    &fill_color,
                /*lap line color*/  &red                       );
 
-    m_node = irr_driver->getSceneManager()->addMeshSceneNode(m_mesh);   // add Debug Mesh
+    m_node = irr_driver->addMesh(m_mesh);   // add Debug Mesh
 #ifdef DEBUG
     m_node->setName("minimap-mesh");
 #endif
@@ -1053,7 +1047,6 @@ video::ITexture *QuadGraph::makeMiniMap(const core::dimension2du &origdimension,
     {
         Log::error("Quad Graph", "[makeMiniMap] WARNING: RTT does not appear to work,"
                         "mini-map will not be available.");
-        return NULL;
     }
 
     return texture;

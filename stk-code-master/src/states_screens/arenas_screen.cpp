@@ -16,8 +16,6 @@
 //  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "challenges/unlock_manager.hpp"
-#include "config/player_manager.hpp"
-#include "config/user_config.hpp"
 #include "graphics/irr_driver.hpp"
 #include "guiengine/widget.hpp"
 #include "guiengine/widgets/dynamic_ribbon_widget.hpp"
@@ -107,7 +105,7 @@ void ArenasScreen::beforeAddingWidget()
 
     DynamicRibbonWidget* tracks_widget = this->getWidget<DynamicRibbonWidget>("tracks");
     assert( tracks_widget != NULL );
-    tracks_widget->setItemCountHint(num_of_arenas+1); //set the item hint to that number to prevent weird formatting
+    tracks_widget->setItemCountHint(num_of_arenas); //set the item hint to that number to prevent weird formatting
 }
 
 // -----------------------------------------------------------------------------
@@ -236,7 +234,7 @@ void ArenasScreen::buildTrackList()
                 if(!curr->isArena()) continue;
             }
 
-            if (PlayerManager::getCurrentPlayer()->isLocked(curr->getIdent()))
+            if (unlock_manager->getCurrentSlot()->isLocked(curr->getIdent()))
             {
                 w->addItem( _("Locked : solve active challenges to gain access to more!"),
                            "locked", curr->getScreenshotFile(), LOCKED_BADGE );
@@ -266,7 +264,7 @@ void ArenasScreen::buildTrackList()
                 if(!curr->isArena()) continue;
             }
 
-            if (PlayerManager::getCurrentPlayer()->isLocked(curr->getIdent()))
+            if (unlock_manager->getCurrentSlot()->isLocked(curr->getIdent()))
             {
                 w->addItem( _("Locked : solve active challenges to gain access to more!"),
                            "locked", curr->getScreenshotFile(), LOCKED_BADGE );

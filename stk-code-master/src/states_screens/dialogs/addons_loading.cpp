@@ -21,7 +21,8 @@
 #include <pthread.h>
 
 #include "addons/addons_manager.hpp"
-#include "config/player_manager.hpp"
+#include "addons/inetwork_http.hpp"
+#include "addons/request.hpp"
 #include "config/user_config.hpp"
 #include "guiengine/engine.hpp"
 #include "guiengine/scalable_font.hpp"
@@ -30,22 +31,21 @@
 #include "io/file_manager.hpp"
 #include "states_screens/addons_screen.hpp"
 #include "states_screens/dialogs/message_dialog.hpp"
-#include "states_screens/dialogs/vote_dialog.hpp"
 #include "states_screens/state_manager.hpp"
 #include "tracks/track_manager.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
 
 using namespace GUIEngine;
-using namespace Online;
 using namespace irr::gui;
 
 // ----------------------------------------------------------------------------
 /** Creates a modal dialog with given percentage of screen width and height
 */
 
-AddonsLoading::AddonsLoading(const std::string &id)
-             : ModalDialog(0.8f, 0.8f)
+AddonsLoading::AddonsLoading(const float w, const float h,
+                             const std::string &id)
+             : ModalDialog(w, h)
 {
     m_addon            = *(addons_manager->getAddon(id));
     m_icon_shown       = false;
@@ -92,7 +92,7 @@ void AddonsLoading::beforeAddingWidgets()
          * and  not in error state
          */
         if (m_addon.needsUpdate() && !addons_manager->wasError()
-            && UserConfigParams::m_internet_status==RequestManager::IPERM_ALLOWED)
+            && UserConfigParams::m_internet_status==INetworkHttp::IPERM_ALLOWED)
             getWidget<IconButtonWidget> ("install")->setLabel( _("Update") );
         else
             r->removeChildNamed("install");
@@ -129,11 +129,10 @@ void AddonsLoading::beforeAddingWidgets()
         else if(m_addon.testStatus(Addon::AS_RC))
             l.push_back("RC");
 
-        // Don't displat those for now, they're more confusing than helpful for the average player
-        //if(m_addon.testStatus(Addon::AS_BAD_DIM))
-        //    l.push_back("bad-texture");
-        //if(!m_addon.testStatus(Addon::AS_DFSG))
-        //    l.push_back("non-DFSG");
+        if(m_addon.testStatus(Addon::AS_BAD_DIM))
+            l.push_back("bad-texture");
+        if(!m_addon.testStatus(Addon::AS_DFSG))
+            l.push_back("non-DFSG");
     }
     if(m_addon.testStatus(Addon::AS_FEATURED))
         l.push_back(_("featured"));
@@ -198,7 +197,8 @@ void AddonsLoading::escapePressed()
 
 // ----------------------------------------------------------------------------
 
-GUIEngine::EventPropagation AddonsLoading::processEvent(const std::string& event_source)
+GUIEngine::EventPropagation
+                    AddonsLoading::processEvent(const std::string& event_source)
 {
     GUIEngine::RibbonWidget* actions_ribbon =
             getWidget<GUIEngine::RibbonWidget>("actions");
@@ -236,32 +236,9 @@ GUIEngine::EventPropagation AddonsLoading::processEvent(const std::string& event
             doUninstall();
             return GUIEngine::EVENT_BLOCK;
         }
-        else if (selection == "vote")
-        {
-            voteClicked();
-            return GUIEngine::EVENT_BLOCK;
-        }
-    }
-    else if (event_source == "rating")
-    {
-        voteClicked();
-        return GUIEngine::EVENT_BLOCK;
     }
     return GUIEngine::EVENT_LET;
 }   // processEvent
-
-// ----------------------------------------------------------------------------
-void AddonsLoading::voteClicked()
-{
-    if (PlayerManager::isCurrentLoggedIn())
-    {
-        // We need to keep a copy of the addon id, since dismiss() will
-        // delete this object (and the copy of the addon).
-        std::string addon_id = m_addon.getId();
-        dismiss();
-        new VoteDialog(addon_id);
-    }
-}   // voteClicked
 
 // ----------------------------------------------------------------------------
 void AddonsLoading::onUpdate(float delta)
@@ -278,7 +255,7 @@ void AddonsLoading::onUpdate(float delta)
             new MessageDialog( _("Sorry, downloading the add-on failed"));
             return;
         }
-        else if(m_download_request->isDone())
+        else if(progress>=1.0f)
         {
             m_back_button->setLabel(_("Back"));
             // No sense to update state text, since it all
@@ -304,13 +281,12 @@ void AddonsLoading::onUpdate(float delta)
  **/
 void AddonsLoading::startDownload()
 {
+    std::string file   = m_addon.getZipFileName();
     std::string save   = "tmp/"
                        + StringUtils::getBasename(m_addon.getZipFileName());
-    m_download_request = new Online::HTTPRequest(save, /*manage mem*/false,
-                                                 /*priority*/5);
-    m_download_request->setURL(m_addon.getZipFileName());
-    m_download_request->queue();
-
+    m_download_request = INetworkHttp::get()->downloadFileAsynchron(file, save,
+                                                       /*priority*/5,
+                                                       /*manage memory*/false);
 }   // startDownload
 
 // ----------------------------------------------------------------------------
@@ -327,8 +303,7 @@ void AddonsLoading::stopDownload()
         // network_http will potentially update the request. So in
         // order to avoid a memory leak, we let network_http free
         // the request.
-        //m_download_request->setManageMemory(true);
-        assert(false);
+        m_download_request->setManageMemory(true);
         m_download_request->cancel();
     };
 }   // startDownload
@@ -399,8 +374,8 @@ void AddonsLoading::doUninstall()
 
         RibbonWidget* r = getWidget<RibbonWidget>("actions");
         r->setVisible(true);
-        IconButtonWidget *u = getWidget<IconButtonWidget> ("uninstall" );
-        u->setLabel(_("Try again"));
+
+        m_install_button->setLabel(_("Try again"));
     }
     else
     {

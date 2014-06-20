@@ -58,7 +58,7 @@ public:
 
         if (event.EventType == EET_KEY_INPUT_EVENT && event.KeyInput.PressedDown)
         {
-            for (unsigned int n=0; n<m_listeners.size(); n++)
+            for (int n=0; n<m_listeners.size(); n++)
             {
                 m_listeners[n].onTextUpdated();
             }
@@ -94,9 +94,6 @@ void TextBoxWidget::add()
                                   (m_parent ? m_parent : GUIEngine::getGUIEnv()->getRootGUIElement()),
                                   getNewID(), widget_size);
 
-    if (m_deactivated)
-        m_element->setEnabled(false);
-
     //m_element = GUIEngine::getGUIEnv()->addEditBox(text.c_str(), widget_size,
     //                                               true /* border */, m_parent, getNewID());
     m_id = m_element->getID();
@@ -127,15 +124,6 @@ stringw TextBoxWidget::getText() const
     assert(textCtrl != NULL);
 
     return stringw(textCtrl->getText());
-}
-
-// -----------------------------------------------------------------------------
-
-void TextBoxWidget::setPasswordBox(bool passwordBox, wchar_t passwordChar)
-{
-    IGUIEditBox* textCtrl =  Widget::getIrrlichtElement<IGUIEditBox>();
-    assert(textCtrl != NULL);
-    textCtrl->setPasswordBox(passwordBox, passwordChar);
 }
 
 // -----------------------------------------------------------------------------
@@ -171,33 +159,3 @@ void TextBoxWidget::elementRemoved()
     m_element->drop();
     Widget::elementRemoved();
 }
-
-// -----------------------------------------------------------------------------
-
-void TextBoxWidget::setActivated()
-{
-    Widget::setActivated();
-
-    if (m_element != NULL)
-    {
-        IGUIEditBox* textCtrl = Widget::getIrrlichtElement<IGUIEditBox>();
-        assert(textCtrl != NULL);
-        textCtrl->setEnabled(true);
-    }
-}
-
-// -----------------------------------------------------------------------------
-
-void TextBoxWidget::setDeactivated()
-{
-    Widget::setDeactivated();
-
-    if (m_element != NULL)
-    {
-        IGUIEditBox* textCtrl = Widget::getIrrlichtElement<IGUIEditBox>();
-        assert(textCtrl != NULL);
-        textCtrl->setEnabled(false);
-    }
-}
-
-// -----------------------------------------------------------------------------

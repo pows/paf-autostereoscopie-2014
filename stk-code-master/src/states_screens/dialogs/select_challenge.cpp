@@ -15,11 +15,7 @@
 //  along with this program; if not, write to the Free Software
 //  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-#include "states_screens/dialogs/select_challenge.hpp"
-
-#include "challenges/challenge_status.hpp"
 #include "challenges/unlock_manager.hpp"
-#include "config/player_manager.hpp"
 #include "config/user_config.hpp"
 #include "graphics/irr_driver.hpp"
 #include "guiengine/engine.hpp"
@@ -32,6 +28,7 @@
 #include "network/network_manager.hpp"
 #include "race/grand_prix_manager.hpp"
 #include "race/race_manager.hpp"
+#include "states_screens/dialogs/select_challenge.hpp"
 #include "tracks/track_manager.hpp"
 #include "tracks/track.hpp"
 #include "utils/log.hpp"
@@ -95,27 +92,26 @@ SelectChallengeDialog::SelectChallengeDialog(const float percentWidth,
             break;
     }
 
-    const ChallengeStatus* c = PlayerManager::getCurrentPlayer()
-                             ->getChallengeStatus(challenge_id);
+    const Challenge* c = unlock_manager->getCurrentSlot()->getChallenge(challenge_id);
 
     if (c->isSolved(RaceManager::DIFFICULTY_EASY))
     {
         IconButtonWidget* btn = getWidget<IconButtonWidget>("novice");
-        btn->setImage(file_manager->getAsset(FileManager::GUI, "cup_bronze.png"),
+        btn->setImage(file_manager->getTextureFile("cup_bronze.png").c_str(),
                      IconButtonWidget::ICON_PATH_TYPE_ABSOLUTE);
     }
 
     if (c->isSolved(RaceManager::DIFFICULTY_MEDIUM))
     {
         IconButtonWidget* btn = getWidget<IconButtonWidget>("intermediate");
-        btn->setImage(file_manager->getAsset(FileManager::GUI,"cup_silver.png"),
+        btn->setImage(file_manager->getTextureFile("cup_silver.png").c_str(),
                      IconButtonWidget::ICON_PATH_TYPE_ABSOLUTE);
     }
 
     if (c->isSolved(RaceManager::DIFFICULTY_HARD))
     {
         IconButtonWidget* btn = getWidget<IconButtonWidget>("expert");
-        btn->setImage(file_manager->getAsset(FileManager::GUI,"cup_gold.png"),
+        btn->setImage(file_manager->getTextureFile("cup_gold.png").c_str(),
                      IconButtonWidget::ICON_PATH_TYPE_ABSOLUTE);
     }
 
@@ -135,8 +131,7 @@ SelectChallengeDialog::SelectChallengeDialog(const float percentWidth,
     }
     else
     {
-        const core::stringw track_name =
-            track_manager->getTrack(c->getData()->getTrackId())->getName();
+        const wchar_t* track_name = track_manager->getTrack(c->getData()->getTrackId())->getName();
         getWidget<LabelWidget>("title")->setText( track_name, true );
     }
 
@@ -165,7 +160,7 @@ GUIEngine::EventPropagation SelectChallengeDialog::processEvent(const std::strin
     if (eventSource == "novice" || eventSource == "intermediate" ||
         eventSource == "expert")
     {
-        const ChallengeData* challenge = unlock_manager->getChallengeData(m_challenge_id);
+        const ChallengeData* challenge = unlock_manager->getChallenge(m_challenge_id);
 
         if (challenge == NULL)
         {
@@ -174,7 +169,7 @@ GUIEngine::EventPropagation SelectChallengeDialog::processEvent(const std::strin
             return GUIEngine::EVENT_LET;
         }
 
-        PlayerManager::getCurrentPlayer()->setCurrentChallenge(m_challenge_id);
+        unlock_manager->getCurrentSlot()->setCurrentChallenge(m_challenge_id);
 
         ModalDialog::dismiss();
 
@@ -207,7 +202,7 @@ GUIEngine::EventPropagation SelectChallengeDialog::processEvent(const std::strin
         // Initialise global data - necessary even in local games to avoid
         // many if tests in other places (e.g. if network_game call
         // network_manager else call race_manager).
-//        network_manager->initCharacterDataStructures();
+        network_manager->initCharacterDataStructures();
 
         // Launch challenge
         if (eventSource == "novice")
@@ -234,7 +229,7 @@ GUIEngine::EventPropagation SelectChallengeDialog::processEvent(const std::strin
         }
 
         // Sets up kart info, including random list of kart for AI
-        race_manager->setupPlayerKartInfo();
+        network_manager->setupPlayerKartInfo();
         race_manager->startNew(true);
 
         irr_driver->hidePointer();

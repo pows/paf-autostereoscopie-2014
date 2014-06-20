@@ -167,7 +167,6 @@ public:
 	virtual void unbindRTT();
 
 	ITexture* DepthTexture;
-	GLuint DepthBufferTexture;
 protected:
 	GLuint ColorFrameBuffer;
 };

@@ -18,26 +18,20 @@
 
 #include "utils/leak_check.hpp"
 
-#include "utils/crash_reporting.hpp"
 #include "utils/log.hpp"
-#include "utils/ptr_vector.hpp"
-#include "utils/string_utils.hpp"
 #include "utils/synchronised.hpp"
+#include "utils/ptr_vector.hpp"
 
 #ifdef DEBUG
 
 /** Switch this to 1 to get the backtrace of the leaks (slows down execution a little)
- *  Atm only implemented for OSX and windows. */
-#undef GET_STACK_TRACE
-
-Synchronised<int> m_lock_stacktrace;
+    Atm only implemented for OSX */
+#define GET_STACK_TRACE 0
 
 
-#ifdef GET_STACK_TRACE
-#  ifdef __APPLE__
-#    include <Availability.h>
-#    include <execinfo.h>
-#  endif
+#if (GET_STACK_TRACE == 1) && defined(__APPLE__)
+#  include <Availability.h>
+#  include <execinfo.h>
 #endif
 
 #include <iostream>
@@ -52,18 +46,14 @@ namespace MemoryLeaks
     // ------------------------------------------------------------------------
     AllocatedObject::AllocatedObject()
     {
-#ifdef GET_STACK_TRACE
-#  if defined(__APPLE__)
+#if (GET_STACK_TRACE == 1) && defined(__APPLE__)
         const int max_size = 32;
         void* callstack[max_size];
         m_stack_size = backtrace(callstack, max_size);
 
         m_stack = backtrace_symbols(callstack, m_stack_size);
-#  elif defined(WIN32)
-        m_lock_stacktrace.lock();
-        CrashReporting::getCallStack(m_stack);
-        m_lock_stacktrace.unlock();
-#  endif
+#else
+        m_stack = NULL;
 #endif
         addObject(this);
     }   // AllocatedObject
@@ -78,24 +68,19 @@ namespace MemoryLeaks
      */
     void AllocatedObject::print() const
     {
-#ifdef GET_STACK_TRACE
-#  if defined(__APPLE__)
-        for (int i = 0; i < m_stack_size; ++i)
+        //m_object->print();
+
+        if (m_stack == NULL)
         {
-            Log::error("LeakCheck", "    %s\n", m_stack[i]);
+            printf("    (No stack information available)\n");
         }
-#  elif defined(WIN32)
-        std::vector<std::string> calls = StringUtils::split(m_stack, '\n');
-        // Ignore the first 4 entries, which are: empty, getCallStack(),
-        // AllocatedObject(),LeakCheck()
-        for (unsigned int i = 4; i < calls.size(); ++i)
+        else
         {
-            Log::error("LeakCheck", "    %s", calls[i].c_str());
+            for (int i = 0; i < m_stack_size; ++i)
+            {
+                printf("    %s\n", m_stack[i]);
+            }
         }
-#  endif
-#else
-        printf("    (No stack information available)\n");
-#endif
 
     }   // print
 

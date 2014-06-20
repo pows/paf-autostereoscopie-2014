@@ -84,65 +84,6 @@ bool COpenGLDriver::changeRenderContext(const SExposedVideoData& videoData, CIrr
 	return true;
 }
 
-static PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribs_ARB;
-
-static HGLRC getMeAGLContext(HDC HDc)
-{
-    HGLRC hrc = 0;
-    int ctx44[] =
-    {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 3,
-        WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB,
-        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-        0
-    };
-
-    hrc = wglCreateContextAttribs_ARB(HDc, 0, ctx44);
-    if (hrc)
-        return hrc;
-
-    int ctx40[] =
-    {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 0,
-        WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB,
-        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-        0
-    };
-
-    hrc = wglCreateContextAttribs_ARB(HDc, 0, ctx40);
-    if (hrc)
-        return hrc;
-
-    int ctx33[] =
-    {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 3,
-        WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB,
-        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-        0
-    };
-
-    hrc = wglCreateContextAttribs_ARB(HDc, 0, ctx33);
-    if (hrc)
-        return hrc;
-
-    int ctx31[] =
-    {
-        WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
-        WGL_CONTEXT_MINOR_VERSION_ARB, 1,
-        WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB,
-        WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-        0
-    };
-    hrc = wglCreateContextAttribs_ARB(HDc, 0, ctx31);
-    if (hrc)
-        return hrc;
-
-    return NULL;
-}
-
 //! inits the open gl driver
 bool COpenGLDriver::initDriver(CIrrDeviceWin32* device)
 {
@@ -397,9 +338,7 @@ bool COpenGLDriver::initDriver(CIrrDeviceWin32* device)
 	else
 #endif
 		AntiAlias=0;
-#ifdef WGL_ARB_create_context
-	wglCreateContextAttribs_ARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress("wglCreateContextAttribsARB");
-#endif
+
 	wglMakeCurrent(HDc, NULL);
 	wglDeleteContext(hrc);
 	ReleaseDC(temporary_wnd, HDc);
@@ -466,10 +405,17 @@ bool COpenGLDriver::initDriver(CIrrDeviceWin32* device)
 
 	// create rendering context
 #ifdef WGL_ARB_create_context
+	PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribs_ARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress("wglCreateContextAttribsARB");
 	if (wglCreateContextAttribs_ARB)
 	{
-        hrc = getMeAGLContext(HDc);
-    }
+		int iAttribs[] =
+		{
+			WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+			WGL_CONTEXT_MINOR_VERSION_ARB, 1,
+			0
+		};
+		hrc=wglCreateContextAttribs_ARB(HDc, 0, iAttribs);
+	}
 	else
 #endif
 		hrc=wglCreateContext(HDc);
@@ -2634,8 +2580,8 @@ void COpenGLDriver::setRenderStates3DMode()
 
 		ResetRenderStates = true;
 #ifdef GL_EXT_clip_volume_hint
-//		if (FeatureAvailable[IRR_EXT_clip_volume_hint])
-//			glHint(GL_CLIP_VOLUME_CLIPPING_HINT_EXT, GL_NICEST);
+		if (FeatureAvailable[IRR_EXT_clip_volume_hint])
+			glHint(GL_CLIP_VOLUME_CLIPPING_HINT_EXT, GL_NICEST);
 #endif
 	}
 
@@ -3292,8 +3238,8 @@ void COpenGLDriver::setRenderStates2DMode(bool alpha, bool texture, bool alphaCh
 		}
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 #ifdef GL_EXT_clip_volume_hint
-//		if (FeatureAvailable[IRR_EXT_clip_volume_hint])
-//			glHint(GL_CLIP_VOLUME_CLIPPING_HINT_EXT, GL_FASTEST);
+		if (FeatureAvailable[IRR_EXT_clip_volume_hint])
+			glHint(GL_CLIP_VOLUME_CLIPPING_HINT_EXT, GL_FASTEST);
 #endif
 
 	}
@@ -4448,6 +4394,12 @@ IImage* COpenGLDriver::createScreenShot(video::ECOLOR_FORMAT format, video::E_RE
 	if (target==video::ERT_MULTI_RENDER_TEXTURES || target==video::ERT_RENDER_TEXTURE || target==video::ERT_STEREO_BOTH_BUFFERS)
 		return 0;
 
+	// allows to read pixels in top-to-bottom order
+#ifdef GL_MESA_pack_invert
+	if (FeatureAvailable[IRR_MESA_pack_invert])
+		glPixelStorei(GL_PACK_INVERT_MESA, GL_TRUE);
+#endif
+
 	if (format==video::ECF_UNKNOWN)
 		format=getColorFormat();
 	GLenum fmt;
@@ -4587,6 +4539,11 @@ IImage* COpenGLDriver::createScreenShot(video::ECOLOR_FORMAT format, video::E_RE
 		glReadBuffer(GL_BACK);
 	}
 
+#ifdef GL_MESA_pack_invert
+	if (FeatureAvailable[IRR_MESA_pack_invert])
+		glPixelStorei(GL_PACK_INVERT_MESA, GL_FALSE);
+	else
+#endif
 	if (pixels)
 	{
 		// opengl images are horizontally flipped, so we have to fix that here.

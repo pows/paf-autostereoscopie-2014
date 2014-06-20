@@ -31,7 +31,6 @@
 #include "modes/profile_world.hpp"
 #include "modes/world.hpp"
 #include "utils/translation.hpp"
-#include "utils/log.hpp"
 
 using namespace GUIEngine;
 
@@ -63,13 +62,13 @@ void StateManager::deallocate()
 StateManager::ActivePlayer* StateManager::getActivePlayer(const int id)
 {
     ActivePlayer *returnPlayer = NULL;
-    if (id < (int)m_active_players.size() && id >= 0)
+    if (id < m_active_players.size() && id >= 0)
     {
         returnPlayer = m_active_players.get(id);
     }
     else
     {
-        Log::error("StateManager", "getActivePlayer(): id %d out of bounds", id);
+        fprintf(stderr, "getActivePlayer(): id out of bounds\n");
         assert(false);
         return NULL;
     }
@@ -101,8 +100,7 @@ void StateManager::updateActivePlayerIDs()
 
 // ----------------------------------------------------------------------------
 
-int StateManager::createActivePlayer(PlayerProfile *profile,
-                                     InputDevice *device)
+int StateManager::createActivePlayer(PlayerProfile *profile, InputDevice *device)
 {
     ActivePlayer *p;
     int i;
@@ -125,7 +123,7 @@ void StateManager::removeActivePlayer(int id)
 
 // ----------------------------------------------------------------------------
 
-unsigned int StateManager::activePlayerCount()
+int StateManager::activePlayerCount()
 {
     return m_active_players.size();
 }   // activePlayerCount
@@ -169,8 +167,7 @@ void StateManager::escapePressed()
     // when another modal dialog is visible
     else if(ModalDialog::isADialogActive())
     {
-        if(ModalDialog::getCurrent()->onEscapePressed())
-            ModalDialog::getCurrent()->dismiss();
+        ModalDialog::getCurrent()->escapePressed();
     }
     // In-game
     else if(m_game_mode == GAME)
@@ -205,7 +202,7 @@ void StateManager::onGameStateChange(GameState new_state)
 
         if (new_state == MENU)
         {
-            GUIEngine::Screen* screen = GUIEngine::getCurrentScreen();
+            Screen* screen = GUIEngine::getCurrentScreen();
             if (screen != NULL)
             {
                 music_manager->startMusic(

@@ -39,6 +39,8 @@ private:
     Synchronised<std::vector<Addon> >  m_addons_list;
     /** Full filename of the addons_installed.xml file. */
     std::string                        m_file_installed;
+    std::string                        m_type;
+    int                                m_download_state;
 
     /** List of loaded icons. */
     std::vector<std::string> m_icon_list;
@@ -58,15 +60,13 @@ private:
 public:
                  AddonsManager();
                 ~AddonsManager();
-    void         init(const XMLNode *xml, bool force_refresh);
-    void         initAddons(const XMLNode *xml);
+    void         initOnline(const XMLNode *xml);
     void         checkInstalledAddons();
     const Addon* getAddon(const std::string &id) const;
     int          getAddonIndex(const std::string &id) const;
     bool         install(const Addon &addon);
     bool         uninstall(const Addon &addon);
     void         reInit();
-    bool         anyAddonsInstalled() const;
     // ------------------------------------------------------------------------
     /** Returns true if the list of online addons has been downloaded. This is
      *  used to grey out the 'addons' entry till a network connections could be

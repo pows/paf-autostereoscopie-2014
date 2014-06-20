@@ -21,15 +21,14 @@
 #include <iostream>
 #include <fstream>
 
+#include "config/player.hpp"
 #include "config/user_config.hpp"
 #include "graphics/irr_driver.hpp"
-#include "input/wiimote_manager.hpp"
 #include "io/file_manager.hpp"
 #include "states_screens/kart_selection.hpp"
 #include "states_screens/state_manager.hpp"
-#include "utils/log.hpp"
 #include "utils/translation.hpp"
-
+#include "input/wiimote_manager.hpp"
 
 #define INPUT_MODE_DEBUG 0
 
@@ -57,18 +56,18 @@ bool DeviceManager::initialize()
 
     if(UserConfigParams::logMisc())
     {
-        Log::info("Device manager","Initializing Device Manager");
-        Log::info("-","---------------------------");
+        printf("Initializing Device Manager\n");
+        printf("---------------------------\n");
     }
 
     deserialize();
 
     // Assign a configuration to the keyboard, or create one if we haven't yet
-    if(UserConfigParams::logMisc()) Log::info("Device manager","Initializing keyboard support.");
+    if(UserConfigParams::logMisc()) printf("Initializing keyboard support.\n");
     if (m_keyboard_configs.size() == 0)
     {
         if(UserConfigParams::logMisc())
-            Log::info("Device manager","No keyboard configuration exists, creating one.");
+            printf("No keyboard configuration exists, creating one.\n");
         m_keyboard_configs.push_back(new KeyboardConfig());
         created = true;
     }
@@ -80,13 +79,13 @@ bool DeviceManager::initialize()
     }
 
     if(UserConfigParams::logMisc())
-            Log::info("Device manager","Initializing gamepad support.");
+            printf("Initializing gamepad support.\n");
 
     irr_driver->getDevice()->activateJoysticks(m_irrlicht_gamepads);
     int num_gamepads = m_irrlicht_gamepads.size();
     if(UserConfigParams::logMisc())
     {
-        Log::info("Device manager","Irrlicht reports %d gamepads are attached to the system.",
+        printf("Irrlicht reports %d gamepads are attached to the system.\n",
                num_gamepads);
     }
 
@@ -110,19 +109,19 @@ bool DeviceManager::initialize()
 
         if (UserConfigParams::logMisc())
         {
-            Log::info("Device manager","#%d: %s detected...", id, name.c_str());
+            printf("#%d: %s detected...", id, name.c_str());
         }
         // Returns true if new configuration was created
         if (getConfigForGamepad(id, name, &gamepadConfig) == true)
         {
             if(UserConfigParams::logMisc())
-               Log::info("Device manager","creating new configuration.");
+                printf("creating new configuration.\n");
             created = true;
         }
         else
         {
             if(UserConfigParams::logMisc())
-                Log::info("Device manager","using existing configuration.");
+                printf("using existing configuration.\n");
         }
 
         gamepadConfig->setPlugged();
@@ -152,11 +151,11 @@ void DeviceManager::setAssignMode(const PlayerAssignMode assignMode)
     // when going back to no-assign mode, do some cleanup
     if (assignMode == NO_ASSIGN)
     {
-        for (unsigned int i=0; i < m_gamepads.size(); i++)
+        for (int i=0; i < m_gamepads.size(); i++)
         {
             m_gamepads[i].setPlayer(NULL);
         }
-        for (unsigned int i=0; i < m_keyboards.size(); i++)
+        for (int i=0; i < m_keyboards.size(); i++)
         {
             m_keyboards[i].setPlayer(NULL);
         }
@@ -192,7 +191,7 @@ bool DeviceManager::getConfigForGamepad(const int irr_id,
     bool configCreated = false;
 
     // Find appropriate configuration
-    for(unsigned int n=0; n < m_gamepad_configs.size(); n++)
+    for(int n=0; n < m_gamepad_configs.size(); n++)
     {
         if(m_gamepad_configs[n].getName() == name.c_str())
         {
@@ -250,7 +249,7 @@ void DeviceManager::addGamepad(GamePadDevice* d)
 
 bool DeviceManager::deleteConfig(DeviceConfig* config)
 {
-    for (unsigned int n=0; n<m_keyboards.size(); n++)
+    for (int n=0; n<m_keyboards.size(); n++)
     {
         if (m_keyboards[n].getConfiguration() == config)
         {
@@ -258,7 +257,7 @@ bool DeviceManager::deleteConfig(DeviceConfig* config)
             n--;
         }
     }
-    for (unsigned int n=0; n<m_gamepads.size(); n++)
+    for (int n=0; n<m_gamepads.size(); n++)
     {
         if (m_gamepads[n].getConfiguration() == config)
         {
@@ -438,15 +437,15 @@ void DeviceManager::clearLatestUsedDevice()
 // -----------------------------------------------------------------------------
 bool DeviceManager::deserialize()
 {
-    static std::string filepath = file_manager->getUserConfigFile(INPUT_FILE_NAME);
+    static std::string filepath = file_manager->getConfigDir() + "/" + INPUT_FILE_NAME;
 
     if(UserConfigParams::logMisc())
-        Log::info("Device manager","Deserializing input.xml...");
+        printf("Deserializing input.xml...\n");
 
     if(!file_manager->fileExists(filepath))
     {
         if(UserConfigParams::logMisc())
-            Log::warn("Device manager","No configuration file exists.");
+            printf("Warning: no configuration file exists.\n");
     }
     else
     {
@@ -500,15 +499,15 @@ bool DeviceManager::deserialize()
                         {
                             if(keyboard_config != NULL)
                                 if(!keyboard_config->deserializeAction(xml))
-                                    Log::error("Device manager","Ignoring an ill-formed keyboard action in input config.");
+                                    std::cerr << "Ignoring an ill-formed keyboard action in input config.\n";
                         }
                         else if(reading_now == GAMEPAD)
                         {
                             if(gamepad_config != NULL)
                                 if(!gamepad_config->deserializeAction(xml))
-                                     Log::error("Device manager","Ignoring an ill-formed gamepad action in input config.");
+                                    std::cerr << "Ignoring an ill-formed gamepad action in input config.\n";
                         }
-                        else  Log::warn("Device manager","An action is placed in an unexpected area in the input config file.");
+                        else std::cerr << "Warning: An action is placed in an unexpected area in the input config file.\n";
                     }
                 }
                 break;
@@ -535,7 +534,7 @@ bool DeviceManager::deserialize()
 
         if(UserConfigParams::logMisc())
         {
-            Log::info("Device manager","Found %d keyboard and %d gamepad configurations.",
+            printf("Found %d keyboard and %d gamepad configurations.\n",
                    m_keyboard_configs.size(), m_gamepad_configs.size());
         }
 
@@ -557,8 +556,9 @@ bool DeviceManager::deserialize()
 // -----------------------------------------------------------------------------
 void DeviceManager::serialize()
 {
-    static std::string filepath = file_manager->getUserConfigFile(INPUT_FILE_NAME);
-    if(UserConfigParams::logMisc()) Log::info("Device manager","Serializing input.xml...");
+    static std::string filepath = file_manager->getConfigDir() + "/"
+                                + INPUT_FILE_NAME;
+    if(UserConfigParams::logMisc()) printf("Serializing input.xml...\n");
 
 
     std::ofstream configfile;
@@ -566,25 +566,26 @@ void DeviceManager::serialize()
 
     if(!configfile.is_open())
     {
-        Log::error("Device manager","Failed to open %s for writing, controls won't be saved",filepath.c_str());
+        std::cerr << "Failed to open " << filepath.c_str()
+                 << " for writing, controls won't be saved\n";
         return;
     }
 
 
     configfile << "<input version=\"" << INPUT_FILE_VERSION << "\">\n\n";
 
-    for(unsigned int n=0; n<m_keyboard_configs.size(); n++)
+    for(int n=0; n<m_keyboard_configs.size(); n++)
     {
         m_keyboard_configs[n].serialize(configfile);
     }
-    for(unsigned int n=0; n<m_gamepad_configs.size(); n++)
+    for(int n=0; n<m_gamepad_configs.size(); n++)
     {
         m_gamepad_configs[n].serialize(configfile);
     }
 
     configfile << "</input>\n";
     configfile.close();
-    if(UserConfigParams::logMisc()) Log::info("Device manager","Serialization complete.");
+    if(UserConfigParams::logMisc()) printf("Serialization complete.\n\n");
 }   // serialize
 
 // -----------------------------------------------------------------------------

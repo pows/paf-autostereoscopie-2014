@@ -18,12 +18,10 @@
 
 #include "tracks/check_goal.hpp"
 
-#include "config/user_config.hpp"
 #include "io/xml_node.hpp"
 #include "tracks/track.hpp"
 #include "tracks/track_object_manager.hpp"
 #include "modes/soccer_world.hpp"
-
 #include <stdio.h>
 
 /** Constructor for a check goal line.
@@ -62,7 +60,7 @@ void CheckGoal::update(float dt)
 
     PtrVector<TrackObject>&   objects = tom->getObjects();
     unsigned int ball_index = 0;
-    for(unsigned int i=0; i<objects.size(); i++)
+    for(int i=0; i<objects.size(); i++)
     {
         TrackObject* obj = objects.get(i);
         if(!obj->isSoccerBall())
@@ -79,7 +77,7 @@ void CheckGoal::update(float dt)
         m_previous_position[ball_index] = xyz;
         ball_index++;
     }
-}   // update
+}
 
 // ----------------------------------------------------------------------------
 /** Called when the check line is triggered. This function  creates a cannon
@@ -91,15 +89,13 @@ void CheckGoal::trigger(unsigned int kart_index)
     SoccerWorld* world = dynamic_cast<SoccerWorld*>(World::getWorld());
     if(!world)
     {
-        Log::warn("CheckGoal",
-                  "No soccer world found, cannot count the points.");
+        fprintf(stderr, "WARNING: no soccer world found, cannot count the points\n");
         return;
     }
 
     world->onCheckGoalTriggered(m_first_goal);
-}   // trigger
+}   // CheckGoal
 
-// ----------------------------------------------------------------------------
 bool CheckGoal::isTriggered(const Vec3 &old_pos, const Vec3 &new_pos,
                             unsigned int indx)
 {
@@ -112,7 +108,6 @@ bool CheckGoal::isTriggered(const Vec3 &old_pos, const Vec3 &new_pos,
 
 }   // isTriggered
 
-// ----------------------------------------------------------------------------
 void CheckGoal::reset(const Track &track)
 {
     const TrackObjectManager* tom = track.getTrackObjectManager();
@@ -121,7 +116,7 @@ void CheckGoal::reset(const Track &track)
     m_previous_position.clear();
 
     const PtrVector<TrackObject>&   objects = tom->getObjects();
-    for(unsigned int i=0; i<objects.size(); i++)
+    for(int i=0; i<objects.size(); i++)
     {
         const TrackObject* obj = objects.get(i);
         if(!obj->isSoccerBall())

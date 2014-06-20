@@ -23,7 +23,6 @@
 #include <IMeshSceneNode.h>
 
 #include "audio/music_manager.hpp"
-#include "graphics/camera.hpp"
 #include "graphics/irr_driver.hpp"
 #include "io/file_manager.hpp"
 #include "karts/abstract_kart.hpp"
@@ -44,8 +43,7 @@ ThreeStrikesBattle::ThreeStrikesBattle() : WorldWithRank()
     m_use_highscores = false;
     m_insert_tire = 0;
 
-    m_tire = irr_driver->getMesh(file_manager->getAsset(FileManager::MODEL,
-                                 "tire.b3d") );
+    m_tire = irr_driver->getMesh( file_manager->getModelFile("tire.b3d") );
     irr_driver->grabAllTextures(m_tire);
 }   // ThreeStrikesBattle
 
@@ -61,7 +59,7 @@ void ThreeStrikesBattle::init()
     // check for possible problems if AI karts were incorrectly added
     if(getNumKarts() > race_manager->getNumPlayers())
     {
-        Log::fatal("[Three Strikes Battle]", "No AI exists for this game mode");
+        Log::fatal("Three Strikes Battle", "No AI exists for this game mode");
     }
     m_kart_info.resize(m_karts.size());
 }   // ThreeStrikesBattle
@@ -298,18 +296,19 @@ void ThreeStrikesBattle::update(float dt)
     WorldWithRank::update(dt);
     WorldWithRank::updateTrack(dt);
 
+    core::vector3df tire_offset;
+    std::string tire;
+    float scale = 0.5f;
+    float radius = 0.5f;
+    PhysicalObject::bodyTypes body_shape;
+
     // insert blown away tire(s) now if was requested
     while (m_insert_tire > 0)
     {
-        std::string tire;
-        core::vector3df tire_offset;
-        float scale = 0.5f;
-        float radius = 0.5f;
-        PhysicalObject::BodyTypes body_shape;
         if(m_insert_tire == 1)
         {
             tire_offset = core::vector3df(0.0f, 0.0f, 0.0f);
-            tire = file_manager->getAsset(FileManager::MODEL,"tire.b3d");
+            tire = file_manager->getModelFile("tire.b3d");
             scale = 0.5f;
             radius = 0.5f;
             body_shape = PhysicalObject::MP_CYLINDER_Y;
@@ -333,31 +332,36 @@ void ThreeStrikesBattle::update(float dt)
 
         core::vector3df tire_xyz = m_tire_position + tire_offset;
         core::vector3df tire_hpr = core::vector3df(800.0f,0,
-                                                   m_tire_rotation *RAD_TO_DEGREE + 180);
+                                                   m_tire_rotation / M_PI * 180 + 180);
         core::vector3df tire_scale(scale,scale,scale);
 
-        PhysicalObject::Settings physics_settings(body_shape,
-                                                  radius, /*mass*/15.0f);
+        PhysicalObject::Settings physicsSettings;
+        physicsSettings.body_type = PhysicalObject::MP_CYLINDER_Y;
+        physicsSettings.crash_reset = false;
+        physicsSettings.knock_kart = false;
+        physicsSettings.mass = 15.0f;
+        physicsSettings.radius = radius;
+        physicsSettings.reset_when_too_low = false;
+        physicsSettings.flatten_kart = false;
 
         TrackObjectPresentationMesh* tire_presentation =
             new TrackObjectPresentationMesh(tire, tire_xyz, tire_hpr, tire_scale);
 
-        TrackObject* tire_obj = new TrackObject(tire_xyz, tire_hpr, tire_scale,
-                                                "movable", tire_presentation,
-                                                true /* is_dynamic */,
-                                                &physics_settings);
-        getTrack()->getTrackObjectManager()->insertObject(tire_obj);
+        TrackObject* tire = new TrackObject(tire_xyz, tire_hpr, tire_scale,
+                                            "movable", tire_presentation,
+                                            true /* is_dynamic */,
+                                            &physicsSettings);
+        getTrack()->getTrackObjectManager()->insertObject(tire);
 
         // FIXME: orient the force relative to kart orientation
-        tire_obj->getPhysicalObject()->getBody()
-                ->applyCentralForce(btVector3(60.0f, 0.0f, 0.0f));
+        tire->getPhysics()->getBody()->applyCentralForce(btVector3(60.0f, 0.0f, 0.0f));
 
         m_insert_tire--;
         if(m_insert_tire == 1)
             m_insert_tire = 0;
 
-        m_tires.push_back(tire_obj);
-    }   // while
+        m_tires.push_back(tire);
+    }
 }   // update
 
 //-----------------------------------------------------------------------------
@@ -468,10 +472,10 @@ void ThreeStrikesBattle::getKartsDisplayInfo(
                 break;
         }
 
-        std::ostringstream oss;
-        oss << m_kart_info[i].m_lives;
+        char lives[4];
+        sprintf(lives, "%i", m_kart_info[i].m_lives);
 
-        rank_info.m_text = oss.str().c_str();
+        rank_info.m_text = lives;
     }
 }   // getKartsDisplayInfo
 
@@ -513,7 +517,7 @@ unsigned int ThreeStrikesBattle::getRescuePositionIndex(AbstractKart *kart)
             accumulated_distance += sqrt(abs_distance2);
         }
 
-        if(accumulated_distance > largest_accumulated_distance_found &&
+        if(accumulated_distance > largest_accumulated_distance_found && 
             spawn_point_clear)
         {
             furthest_id_found = n;

@@ -18,14 +18,13 @@
 #include "states_screens/help_screen_1.hpp"
 
 #include "challenges/unlock_manager.hpp"
-#include "config/player_manager.hpp"
-#include "config/user_config.hpp"
 #include "guiengine/widget.hpp"
 #include "guiengine/widgets/list_widget.hpp"
 #include "guiengine/widgets/ribbon_widget.hpp"
 #include "input/device_manager.hpp"
 #include "input/input_manager.hpp"
 #include "karts/kart_properties_manager.hpp"
+#include "network/network_manager.hpp"
 #include "race/race_manager.hpp"
 #include "states_screens/help_screen_2.hpp"
 #include "states_screens/help_screen_3.hpp"
@@ -66,7 +65,7 @@ void HelpScreen1::eventCallback(Widget* widget, const std::string& name, const i
         InputDevice* device = input_manager->getDeviceList()->getKeyboard(0);
 
         // Create player and associate player with keyboard
-        StateManager::get()->createActivePlayer(PlayerManager::getCurrentPlayer(),
+        StateManager::get()->createActivePlayer(unlock_manager->getCurrentPlayer(),
                                                 device);
 
         if (kart_properties_manager->getKart(UserConfigParams::m_default_kart) == NULL)
@@ -84,7 +83,7 @@ void HelpScreen1::eventCallback(Widget* widget, const std::string& name, const i
             ->setSinglePlayer( StateManager::get()->getActivePlayer(0) );
 
         StateManager::get()->enterGameState();
-        race_manager->setupPlayerKartInfo();
+        network_manager->setupPlayerKartInfo();
         race_manager->startNew(false);
     }
     else if (name == "category")

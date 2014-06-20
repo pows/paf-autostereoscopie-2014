@@ -1,6 +1,5 @@
 //  SuperTuxKart - a fun racing game with go-kart
 //  Copyright (C) 2009-2013 Marianne Gagnon
-//                2013 Glenn De Jonghe
 //
 //  This program is free software; you can redistribute it and/or
 //  modify it under the terms of the GNU General Public License
@@ -29,23 +28,16 @@
 
 namespace GUIEngine
 {
-    /**
+    /** 
       * \brief A rating bar widget.
       * \ingroup widgetsgroup
       */
     class RatingBarWidget : public Widget
     {
-    private:
-        float                   m_rating;
-        float                   m_hover_rating;
-        int                     m_stars;
-        int                     m_steps;
-        std::vector<int>        m_star_values;
-        bool                    m_hovering;
-        bool                    m_allow_voting;
-
-        void setStepValues(float rating);
-
+        
+        float m_rating;
+        int m_star_number;
+        
     public:
         
         LEAK_CHECK()
@@ -53,30 +45,22 @@ namespace GUIEngine
         RatingBarWidget();
         virtual ~RatingBarWidget() {}
         
-
-
         void add();
         
         /** Change the rating value of the widget. */
-        void setRating(float rating);
+        void setRating(float rating) { m_rating = rating; };
         
         /** Get the current value of the widget. */
         float getRating() {return m_rating; };
         
-        /** Change the number of stars of the widget. */
-        void setStarNumber(int star_number) { m_stars = star_number; };
+        /** Change the number of star of the widget. */
+        void setStarNumber(int star_number) { m_star_number = star_number; };
         
-        /** Get the current number of stars of the widget. */
-        int getStarNumber() {return m_stars; };
+        /** Get the current number of star of the widget. */
+        int getStarNumber() {return m_star_number; };
         
-        int getStepsOfStar(int index);
-
-        void setStepValuesByMouse(const core::position2di & mouse_position, const core::recti & stars_rect);
-
-        virtual void onClick();
-
-        void allowVoting() { m_allow_voting = true; }
-    };
+        int getStepOfStar(int index, int max_step);
+    }; 
 }
 
 #endif

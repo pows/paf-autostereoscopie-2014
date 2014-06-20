@@ -35,7 +35,7 @@ class HighscoreManager
 {
 public:
 private:
-    static const unsigned int CURRENT_HSCORE_FILE_VERSION;
+    static const unsigned int CURRENT_HSCORE_FILE_VERSION = 3;
     typedef std::vector<Highscores*> type_all_scores;
     type_all_scores m_all_scores;
 

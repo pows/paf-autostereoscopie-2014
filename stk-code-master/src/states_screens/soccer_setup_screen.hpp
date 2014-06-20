@@ -44,8 +44,6 @@ class SoccerSetupScreen : public GUIEngine::Screen, public GUIEngine::ScreenSing
     };
 
     AlignedArray<KartViewInfo>  m_kart_view_info;
-    
-    bool m_schedule_continue;
 
 public:
 
@@ -64,8 +62,6 @@ public:
 
     /** \brief implement callback from parent class GUIEngine::Screen */
     virtual void tearDown() OVERRIDE;
-
-    virtual void onUpdate(float delta) OVERRIDE;
 
     /** \brief implement callback from parent class GUIEngine::Screen */
     virtual GUIEngine::EventPropagation filterActions( PlayerAction action,

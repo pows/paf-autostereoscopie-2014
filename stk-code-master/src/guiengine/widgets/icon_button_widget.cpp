@@ -61,7 +61,8 @@ void IconButtonWidget::add()
         }
         else if (m_icon_path_type == ICON_PATH_TYPE_RELATIVE)
         {
-            std::string file = file_manager->getAsset(m_properties[PROP_ICON]);
+            std::string file = file_manager->getDataDir() +
+                                                m_properties[PROP_ICON];
             m_texture = irr_driver->getTexture(file);
         }
     }
@@ -71,7 +72,7 @@ void IconButtonWidget::add()
         Log::error("icon_button",
                     "add() : error, cannot find texture '%s'.",
                    m_properties[PROP_ICON].c_str());
-        std::string file = file_manager->getAsset(FileManager::GUI,"main_help.png");
+        std::string file = file_manager->getGUIDir() + "main_help.png";
         m_texture = irr_driver->getTexture(file);
         if(!m_texture)
             Log::fatal("IconButtonWidget",
@@ -90,8 +91,8 @@ void IconButtonWidget::add()
         else if (m_icon_path_type == ICON_PATH_TYPE_RELATIVE)
         {
             m_highlight_texture =
-                irr_driver->getTexture(file_manager->getAsset(
-                                       m_properties[PROP_FOCUS_ICON]));
+                irr_driver->getTexture(file_manager->getDataDir() +
+                                       m_properties[PROP_FOCUS_ICON]);
         }
 
     }
@@ -211,7 +212,7 @@ void IconButtonWidget::setImage(const char* path_to_texture, IconPathType pathTy
     }
     else if (m_icon_path_type == ICON_PATH_TYPE_RELATIVE)
     {
-        std::string file = file_manager->getAsset(m_properties[PROP_ICON]);
+        std::string file = file_manager->getDataDir() + m_properties[PROP_ICON];
         m_texture = irr_driver->getTexture(file);
     }
 
@@ -219,7 +220,7 @@ void IconButtonWidget::setImage(const char* path_to_texture, IconPathType pathTy
     {
         Log::error("icon_button", "Texture '%s' not found!\n",
                    m_properties[PROP_ICON].c_str());
-        std::string file = file_manager->getAsset(FileManager::GUI,"main_help.png");
+        std::string file = file_manager->getDataDir() + "gui/main_help.png";
         m_texture = irr_driver->getTexture(file);
     }
 
@@ -242,7 +243,7 @@ void IconButtonWidget::setImage(ITexture* texture)
     {
         Log::error("icon_button",
                    "setImage invoked with NULL image pointer\n");
-        std::string file = file_manager->getAsset(FileManager::GUI,"main_help.png");
+        std::string file = file_manager->getDataDir() + "gui/main_help.png";
         m_texture = irr_driver->getTexture(file);
     }
 }

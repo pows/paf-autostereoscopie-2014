@@ -424,9 +424,6 @@ public:
     TerrainInfo *getTerrainInfo() { return m_terrain_info; }
     // ------------------------------------------------------------------------
     virtual void setOnScreenText(const wchar_t *text);
-    // ------------------------------------------------------------------------
-    /** For debugging only: check if a kart is flying. */
-    bool isFlying() const { return m_flying;  }
 };   // Kart
 
 

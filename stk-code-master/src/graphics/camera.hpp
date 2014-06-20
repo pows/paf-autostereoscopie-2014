@@ -59,6 +59,11 @@ public:
         CM_FALLING
     };
 
+    enum Style {
+        CS_MODERN,  //!< Flexible link between kart and camera
+        CS_CLASSIC, //!< Fixed position style, like STK v0.6
+    };
+
 private:
     /** The camera scene node. */
     scene::ICameraSceneNode *m_camera;
@@ -86,9 +91,7 @@ private:
     float           m_rotation_range;
 
     /** The kart that the camera follows. It can't be const,
-     *  since in profile mode the camera might change its owner.
-     *  May be NULL (example: cutscene camera)
-     */
+     *  since in profile mode the camera might change its owner. */
     AbstractKart   *m_kart;
 
     /** A pointer to the original kart the camera was pointing at when it
@@ -113,6 +116,10 @@ private:
 
     /** Velocity of the target of the camera, only used for end camera. */
     core::vector3df m_target_velocity;
+
+    /* Whether we should use the pre-0.7 camera style or the
+     * modern style. Should default to modern. */
+    Style           m_camera_style;
 
     /** List of all cameras. */
     static std::vector<Camera*> m_all_cameras;
@@ -188,7 +195,8 @@ private:
     unsigned int  m_next_end_camera;
 
     void setupCamera();
-    void smoothMoveCamera(float dt);
+    void smoothMoveCamera(float dt, const Vec3 &wanted_position,
+                          const Vec3 &wanted_target);
     void computeNormalCameraPosition(Vec3 *wanted_position,
                                      Vec3 *wanted_target);
     void handleEndCamera(float dt);

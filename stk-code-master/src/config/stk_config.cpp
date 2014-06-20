@@ -39,7 +39,6 @@ float STKConfig::UNDEFINED = -99.9f;
 STKConfig::STKConfig()
 {
     m_has_been_loaded         = false;
-    m_title_music             = NULL;
     m_default_kart_properties = new KartProperties();
 }   // STKConfig
 //-----------------------------------------------------------------------------
@@ -47,9 +46,7 @@ STKConfig::~STKConfig()
 {
     if(m_title_music)
         delete m_title_music;
-
-    if(m_default_kart_properties)
-        delete m_default_kart_properties;
+    delete m_default_kart_properties;
 }   // ~STKConfig
 
 //-----------------------------------------------------------------------------
@@ -112,9 +109,7 @@ void STKConfig::load(const std::string &filename)
 
     CHECK_NEG(m_max_karts,                 "<karts max=..."             );
     CHECK_NEG(m_parachute_friction,        "parachute-friction"         );
-    CHECK_NEG(m_parachute_lbound_fraction, "parachute-lbound-fraction"  );
-    CHECK_NEG(m_parachute_ubound_fraction, "parachute-ubound-fraction"  );
-    CHECK_NEG(m_parachute_max_speed,       "parachute-max-speed"        );
+    CHECK_NEG(m_parachute_done_fraction,   "parachute-done-fraction"    );
     CHECK_NEG(m_parachute_time,            "parachute-time"             );
     CHECK_NEG(m_parachute_time_other,      "parachute-time-other"       );
     CHECK_NEG(m_bomb_time,                 "bomb-time"                  );
@@ -156,15 +151,14 @@ void STKConfig::load(const std::string &filename)
 void STKConfig::init_defaults()
 {
     m_anvil_weight               = m_parachute_friction        =
-        m_parachute_time         = m_parachute_lbound_fraction =
+        m_parachute_time         = m_parachute_done_fraction   =
         m_parachute_time_other   = m_anvil_speed_factor        =
         m_bomb_time              = m_bomb_time_increase        =
         m_anvil_time             = m_music_credit_time         =
         m_delay_finish_time      = m_skid_fadeout_time         =
         m_near_ground            = m_item_switch_time          =
-        m_smooth_angle_limit     = m_parachute_ubound_fraction =
-        m_penalty_time           = m_explosion_impulse_objects =
-        m_parachute_max_speed    = UNDEFINED;
+        m_smooth_angle_limit     =
+        m_penalty_time           = m_explosion_impulse_objects = UNDEFINED;
     m_bubblegum_counter          = -100;
     m_bubblegum_shield_time      = -100;
     m_shield_restrict_weapos     = false;
@@ -272,8 +266,9 @@ void STKConfig::getAllData(const XMLNode * root)
         std::string title_music;
         music_node->get("title", &title_music);
         assert(title_music.size() > 0);
-        title_music = file_manager->getAsset(FileManager::MUSIC, title_music);
-        m_title_music = MusicInformation::create(title_music);
+
+        m_title_music = MusicInformation::create(file_manager->getDataDir()
+                                                 + "/music/" + title_music  );
         if(!m_title_music)
             Log::error("StkConfig", "Cannot load title music : %s", title_music.c_str());
     }
@@ -306,12 +301,10 @@ void STKConfig::getAllData(const XMLNode * root)
 
     if(const XMLNode *parachute_node= root->getNode("parachute"))
     {
-        parachute_node->get("friction",         &m_parachute_friction       );
-        parachute_node->get("time",             &m_parachute_time           );
-        parachute_node->get("time-other",       &m_parachute_time_other     );
-        parachute_node->get("lbound-fraction",  &m_parachute_lbound_fraction);
-        parachute_node->get("ubound-fraction",  &m_parachute_ubound_fraction);
-        parachute_node->get("max-speed",        &m_parachute_max_speed      );
+        parachute_node->get("friction",      &m_parachute_friction     );
+        parachute_node->get("time",          &m_parachute_time         );
+        parachute_node->get("time-other",    &m_parachute_time_other   );
+        parachute_node->get("done-fraction", &m_parachute_done_fraction);
     }
 
     if(const XMLNode *bomb_node= root->getNode("bomb"))
@@ -369,7 +362,6 @@ void STKConfig::getAllData(const XMLNode * root)
         replay_node->get("delta-pos",   &m_replay_delta_pos2 );
         replay_node->get("delta-t",     &m_replay_dt         );
     }
-
     // Get the default KartProperties
     // ------------------------------
     const XMLNode *node = root -> getNode("general-kart-defaults");

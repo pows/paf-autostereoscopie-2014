@@ -66,6 +66,8 @@ int scanMode = ROT;
 int width=500;
 int height=500;
 char* title;
+int frame=0, currenttime, timebase=0;
+float fps = 0.0;
 
 float field_of_view_angle;
 float z_near;
@@ -502,6 +504,8 @@ void displayQuad(int is_fpga)
 		glUseProgram(programID);
 		
 		//we activate the 2D textures
+		GLint nbviewsloc = glGetUniformLocation(programID, "floatnbviews");
+		glUniform1fARB(nbviewsloc, (float) nbviews);
   int i ;
   char texture[10] ;
   for(i = 0 ; i<nbviews ; i++) {
@@ -509,7 +513,7 @@ void displayQuad(int is_fpga)
     GLint baseImageLoc = glGetUniformLocation(programID, texture);
     if (baseImageLoc>=0) {
       //fprintf(stderr, "Tx id %s: %d - location %d\n", texture, textureIDs[i], baseImageLoc);
-      glActiveTexture(GL_TEXTURE0 + i);
+      glActiveTexture(GL_TEXTURE0 + i );
       glUniform1i(baseImageLoc, i);
       glBindTexture(GL_TEXTURE_2D, textureIDs[i]);
     }
@@ -898,8 +902,117 @@ void moveCam(){
 }
 
 
+  GLuint* rboId;
+  GLuint depthrenderbuffer;
+  void framebufferloadtexture();
+void framebuffer(){
+
+  rboId = (GLuint*)malloc(sizeof(GLuint)*nbviews);
+  //Loading framebuffer object
+  //glGenFramebuffers(1, &rboId);
+  glGenFramebuffers(nbviews, rboId);
+  //glBindRenderbuffer(GL_RENDERBUFFER, rboId);
+  //glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+  //glBindRenderbuffer(GL_RENDERBUFFER, 0);
+  
+  int i=0;
+  //z depth
+  glGenRenderbuffers(1, &depthrenderbuffer);
+  glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+  for(i=0;i<nbviews;i++){
+     glBindFramebuffer(GL_FRAMEBUFFER, rboId[i]);
+  
+     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+  }
+
+  //window frame buffer.
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  framebufferloadtexture();
+
+  glUseProgram(programID);
+  //set some var for shader
+  char texture[10] ;
+  GLint nbviewsloc = glGetUniformLocation(programID, "floatnbviews");
+  glUniform1fARB(nbviewsloc, (float) nbviews);
+
+  for(i = 0 ; i<nbviews ; i++) {
+    sprintf(texture, "tex%d", i) ;
+    GLint baseImageLoc = glGetUniformLocation(programID, texture);
+    if (baseImageLoc>=0) {
+      //fprintf(stderr, "Tx id %s: %d - location %d\n", texture, textureIDs[i], baseImageLoc);
+      //fprintf(stderr, "\tActivate texture : %d\n", GL_TEXTURE0 + i);
+      glActiveTexture(GL_TEXTURE0 + 1 + i );
+      glUniform1i(baseImageLoc, i + 1);
+      glBindTexture(GL_TEXTURE_2D, textureIDs[i]);
+    }
+  }
+  glUseProgram(0);
+  glActiveTexture(GL_TEXTURE0 );
+
+
+}
+
+void framebufferloadtexture(){
+  char *data;
+  data = (char *)malloc(sizeof(char)*3*width*height);
+  memset(data, 0xFF, sizeof(char)*3*width*height);
+		glBindFramebuffer(GL_FRAMEBUFFER, rboId[0]);
+	for(currentview = 0;currentview < nbviews;currentview++){
+		//glBindFramebuffer(GL_FRAMEBUFFER, rboId[currentview]);
+
+
+
+		glBindTexture(GL_TEXTURE_2D, textureIDs[currentview]);
+		glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, width, height, 0,GL_RGB, GL_UNSIGNED_BYTE, data);
+		// Poor filtering. Needed !
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+		
+
+		// Set "renderedTexture" as our colour attachement #0+currentview
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + currentview, GL_TEXTURE_2D, textureIDs[currentview], 0);
+		//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, GL_TEXTURE_2D, textureIDs[currentview], 0);
+		//GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+		//glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+		 
+	}
+	free(data);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+
+void displayfps(){
+	char* s;
+	frame++;
+	currenttime = glutGet(GLUT_ELAPSED_TIME);
+	if ((currenttime - timebase) > 1000) {
+		//sprintf(s,"FPS:%4.2f",
+		//		frame*1000.0/(currenttime-timebase));
+		fprintf(stderr,"FPS:%4.2f\r",
+				frame*1000.0/(currenttime-timebase));
+		timebase = currenttime;
+		frame = 0;
+	}
+	
+}
+
 void display()
 {
+  if((width != glutGet(GLUT_WINDOW_WIDTH)) || (height != glutGet(GLUT_WINDOW_HEIGHT))){
+  	  width = glutGet(GLUT_WINDOW_WIDTH);
+  	  height = glutGet(GLUT_WINDOW_HEIGHT);
+	  framebufferloadtexture();
+  }
 
 
   if(rotate_on) {
@@ -939,12 +1052,25 @@ void display()
   }
 
 
-
+  //Preparing the framebuffer
+  if(mode==SHADER)
+  	glBindFramebuffer(GL_FRAMEBUFFER, rboId[0]);
     for (currentview=0; currentview<nbviews; currentview++) {
 
 //      if(currentview == nbviews - 1) process_enable = false;
 
       //if (debug_cam) printf("Camera %d\n",currentview);
+
+	    if(mode==SHADER){
+	    //FrameBuffer Set the correct texture.
+	    //glBindFramebuffer(GL_FRAMEBUFFER, rboId[currentview]);
+    	    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureIDs[currentview], 0);
+	    //glViewport(0,0,width,height);
+            GLuint texTarget[1] = { GL_COLOR_ATTACHMENT0+currentview };
+	    glDrawBuffers(1,texTarget);
+	    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		    printf("Error: frame buffer not op.\n");
+	    }
 
 
 
@@ -1026,10 +1152,10 @@ void display()
       }
 
       if (mode==SHADER) {
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, textureIDs[currentview]);
-	glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, width, height, 0);
-	glDisable(GL_TEXTURE_2D) ;
+	//glEnable(GL_TEXTURE_2D);
+	//glBindTexture(GL_TEXTURE_2D, textureIDs[currentview]);
+	//glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, width, height, 0);
+	//glDisable(GL_TEXTURE_2D) ;
 
       }
 
@@ -1044,8 +1170,15 @@ void display()
 
 
       //if (debug_cam) printf("angle = %f\n\n",angle);
+      if(mode!=SHADER)
+	      break;
     }
 
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    //glViewport(0,0,width,height);
+
+    //if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+//	    printf("Error: frame buffer window not op.\n");
 
 #if 0
     angle = angle -((float)nbviews+1)/2*deltaangle;
@@ -1084,6 +1217,7 @@ void display()
 
   //finally flush the last frame drawn
   glutSwapBuffers();
+  displayfps();
 }
 
 
@@ -1118,15 +1252,15 @@ void initialize ()
   glEnable( GL_COLOR_MATERIAL );
   glLightModeli( GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE );
 
+
+
 }
-
-
 
 void keyboard ( unsigned char key, int x, int y )
 {
   switch ( key ) {
   case KEY_ESCAPE:
-    printf("%c",key);
+    exit(0);
     break;
   case 'd':{ //Tourner la cam\E9ra vers la gauche
     anglekey = anglekey + rotationangle;
@@ -1238,6 +1372,9 @@ void keyboard ( unsigned char key, int x, int y )
     bounce_on = !bounce_on ;
     glutPostRedisplay();
     break;
+  case 'p':
+    mode = (mode==SHADER) ? 0 : SHADER;
+    glutPostRedisplay();
   default:
     break;
   }
@@ -1247,6 +1384,24 @@ void keyboard ( unsigned char key, int x, int y )
     // }
 
 
+}
+
+void on_exit(){
+	fprintf(stdout,"\n");
+
+#ifdef USE_FPGA
+	if (mode==FPGA) { 
+		PAF3dClose();
+		free(fpga_in);
+		free(fpga_out);
+	}
+#endif
+	
+
+  free(image);
+  free(depth);
+  free(color_depth);
+  free(profondeur);
 }
 
 
@@ -1354,6 +1509,7 @@ int main(int argc, char **argv)
 
 
   createProgram();
+  framebuffer();
 
   if (image_fond) {
    texture_fond = loadBmp(image_fond);
@@ -1408,23 +1564,12 @@ int main(int argc, char **argv)
   glutDisplayFunc(display);			                	// register Display Function
 //  glutIdleFunc( display );				        	// register Idle Function
   glutKeyboardFunc( keyboard );						// register Keyboard Handler
+  atexit( on_exit );
+  //glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
 
 
   glutMainLoop();
 
-#ifdef USE_FPGA
-	if (mode==FPGA) { 
-		PAF3dClose();
-		free(fpga_in);
-		free(fpga_out);
-	}
-#endif
-	
-
-  free(image);
-  free(depth);
-  free(color_depth);
-  free(profondeur);											// run GLUT mainloop
   return 0;
 }
 

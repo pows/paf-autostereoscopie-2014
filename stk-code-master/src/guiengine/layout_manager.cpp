@@ -33,9 +33,12 @@ using namespace video;
 #include "io/file_manager.hpp"
 #include "utils/ptr_vector.hpp"
 #include "utils/string_utils.hpp"
-#include "utils/vs.hpp"
 
 using namespace GUIEngine;
+
+#ifndef round
+# define round(x)  (floor(x+0.5f))
+#endif
 
 /** Like atoi, but on error prints an error message to stderr */
 int atoi_p(const char* val)
@@ -151,9 +154,8 @@ void LayoutManager::readCoords(Widget* self)
 
     if (self->m_properties[PROP_ICON].size() > 0)
     {
-        // PROP_ICON includes paths (e.g. gui/logo.png)
-        ITexture* texture = irr_driver->getTexture(file_manager->getAsset(
-                                                    self->m_properties[PROP_ICON]));
+        ITexture* texture = irr_driver->getTexture((file_manager->getDataDir() + "/" +
+                                                    self->m_properties[PROP_ICON]).c_str());
 
         if (texture != NULL)
         {
@@ -206,7 +208,7 @@ void LayoutManager::readCoords(Widget* self)
         int child_max_width = -1, child_max_height = -1;
         int total_width = 0, total_height = 0;
 
-        for (unsigned int child=0; child<self->m_children.size(); child++)
+        for (int child=0; child<self->m_children.size(); child++)
         {
             if (self->m_children[child].m_absolute_w > -1)
             {
@@ -324,10 +326,10 @@ void LayoutManager::applyCoords(Widget* self, AbstractTopLevelContainer* topLeve
     else if (self->m_relative_y > -1)         self->m_y = (int)(parent_y + parent_h*self->m_relative_y/100);
 
     if (self->m_absolute_w > -1)      self->m_w = self->m_absolute_w;
-    else if (self->m_relative_w > -1) self->m_w = (int)roundf(parent_w*self->m_relative_w/100.0f);
+    else if (self->m_relative_w > -1) self->m_w = (int)round(parent_w*self->m_relative_w/100.0);
 
     if (self->m_absolute_h > -1)      self->m_h = self->m_absolute_h;
-    else if (self->m_relative_h > -1) self->m_h = (int)roundf(parent_h*self->m_relative_h/100.0f);
+    else if (self->m_relative_h > -1) self->m_h = (int)round(parent_h*self->m_relative_h/100.0);
 
     // ---- can't make widget bigger than parent
     if (self->m_h > (int)parent_h)

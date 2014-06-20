@@ -20,8 +20,7 @@
 
 #include "guiengine/screen.hpp"
 
-namespace GUIEngine { class Widget; class ListWidget;
-                      class IconButtonWidget;         }
+namespace GUIEngine { class Widget; class ListWidget; }
 
 /**
   * \brief Handles the main menu
@@ -32,16 +31,11 @@ class MainMenuScreen : public GUIEngine::Screen, public GUIEngine::ScreenSinglet
 private:
     friend class GUIEngine::ScreenSingleton<MainMenuScreen>;
 
-    /** Keep the widget to avoid looking it up every frame. */
-    GUIEngine::IconButtonWidget* m_online;
-
     MainMenuScreen();
 
 public:
-    /** Temporary disable the online menu while it is being worked at. */
-    static bool m_enable_online;
 
-    virtual void onUpdate(float delta) OVERRIDE;
+    virtual void onUpdate(float delta,  irr::video::IVideoDriver* driver) OVERRIDE;
 
     /** \brief implement callback from parent class GUIEngine::Screen */
     virtual void loadedFromFile() OVERRIDE;

@@ -111,7 +111,7 @@ PowerupManager::PowerupType
  */
 void PowerupManager::loadAllPowerups()
 {
-    const std::string file_name = file_manager->getAsset("powerup.xml");
+    const std::string file_name = file_manager->getDataFile("powerup.xml");
     XMLNode *root               = file_manager->createXMLTree(file_name);
     for(unsigned int i=0; i<root->getNumNodes(); i++)
     {
@@ -125,8 +125,8 @@ void PowerupManager::loadAllPowerups()
             LoadPowerup(type, *node);
         else
         {
-            Log::fatal("[PowerupManager]", "Can't find item '%s' from powerup.xml, entry %d/",
-                        name.c_str(), i+1);
+            printf("Can't find item '%s' from powerup.xml, entry %d/\n",
+                    name.c_str(), i+1);
             exit(-1);
         }
     }
@@ -157,7 +157,7 @@ void PowerupManager::LoadPowerup(PowerupType type, const XMLNode &node)
 #ifdef DEBUG
     if (icon_file.size() == 0)
     {
-        Log::debug("[PowerupManager]", "Cannot load powerup %i, no 'icon' attribute under XML node", type);
+        fprintf(stderr, "Cannot load powerup %i, no 'icon' attribute under XML node\n", type);
         assert(false);
     }
 #endif
@@ -174,7 +174,7 @@ void PowerupManager::LoadPowerup(PowerupType type, const XMLNode &node)
     node.get("model", &model);
     if(model.size()>0)
     {
-        std::string full_path = file_manager->getAsset(FileManager::MODEL,model);
+        std::string full_path = file_manager->getModelFile(model);
         m_all_meshes[type] = irr_driver->getMesh(full_path);
         if(!m_all_meshes[type])
         {
@@ -221,9 +221,8 @@ void PowerupManager::loadWeights(const XMLNode &root,
 
     if(!node || s=="" || s_multi=="")
     {
-        Log::error("[PowerupManager]", "No weights found for class '%s'"
-                    " - probabilities will be incorrect.",
-                    class_name.c_str());
+        printf("No weights found for class '%s' - probabilities will be incorrect.\n",
+               class_name.c_str());
         return;
     }
 
@@ -246,9 +245,9 @@ void PowerupManager::loadWeights(const XMLNode &root,
 
     if(weight_list.size()!=2*(int)POWERUP_LAST)
     {
-        Log::error("[PowerupManager]", "Incorrect number of weights found in class '%s':",
+        printf("Incorrect number of weights found in class '%s':\n",
                class_name.c_str());
-        Log::error("[PowerupManager]", "%d instead of %d - probabilities will be incorrect.",
+        printf("%d instead of %d - probabilities will be incorrect.\n",
                (int)weight_list.size(), (int)POWERUP_LAST);
         return;
     }

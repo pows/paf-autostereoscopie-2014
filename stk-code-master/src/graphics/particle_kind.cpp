@@ -54,8 +54,6 @@ ParticleKind::ParticleKind(const std::string file) : m_min_start_color(255,255,2
     m_has_scale_affector = NULL;
     m_scale_affector_factor_x = 0.0f;
     m_scale_affector_factor_y = 0.0f;
-    m_wind_speed     = 0;
-    m_flips          = false;
 
 
     // ----- Read XML file
@@ -164,16 +162,12 @@ ParticleKind::ParticleKind(const std::string file) : m_min_start_color(255,255,2
     {
         size->get("min", &m_min_size);
         size->get("max", &m_max_size);
-
-        bool has_x = size->get("x-increase-factor", &m_scale_affector_factor_x) == 1;
-        bool has_y = size->get("y-increase-factor", &m_scale_affector_factor_y) == 1;
-        m_has_scale_affector = (has_x || has_y);
     }
     
-    else
-    {
-        m_has_scale_affector = false;
-    }
+    bool has_x = size->get("x-increase-factor", &m_scale_affector_factor_x)==1;
+    bool has_y = size->get("y-increase-factor", &m_scale_affector_factor_y)==1;
+    m_has_scale_affector = (has_x || has_y);
+
     //std::cout << "m_particle_size = " << m_particle_size << "\n";
     //std::cout << "m_min_size = " << m_min_size << "\n";
     //std::cout << "m_max_size = " << m_max_size << "\n";
@@ -225,14 +219,6 @@ ParticleKind::ParticleKind(const std::string file) : m_min_start_color(255,255,2
         m_material_file = material_manager->getLatestMaterial()->getTexFname();
     }
 
-    // ------------------------------------------------------------------------
-
-    const XMLNode* wind = xml->getNode("wind");
-    if (wind != NULL)
-    {
-        wind->get("speed", &m_wind_speed);
-        wind->get("flips", &m_flips);
-    }
 
     // ------------------------------------------------------------------------
 

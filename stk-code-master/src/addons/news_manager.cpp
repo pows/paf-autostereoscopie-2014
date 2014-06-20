@@ -19,8 +19,6 @@
 
 #include "config/user_config.hpp"
 #include "io/file_manager.hpp"
-#include "online/http_request.hpp"
-#include "online/request_manager.hpp"
 #include "states_screens/addons_screen.hpp"
 #include "states_screens/main_menu_screen.hpp"
 #include "utils/string_utils.hpp"
@@ -29,17 +27,13 @@
 
 #include <iostream>
 
-using namespace Online;
-
-NewsManager *NewsManager::m_news_manager=NULL;
+NewsManager *news_manager=NULL;
 
 // ----------------------------------------------------------------------------
 NewsManager::NewsManager() : m_news(std::vector<NewsMessage>())
 {
     m_current_news_message = -1;
-    m_error_message.setAtomic("");
-    m_force_refresh = false;
-    init(false);
+    m_error_message        = "";
 }   // NewsManage
 
 // ---------------------------------------------------------------------------
@@ -48,160 +42,22 @@ NewsManager::~NewsManager()
 }   // ~NewsManager
 
 // ---------------------------------------------------------------------------
-/** This function initialises the data for the news manager. It starts a
- *  separate thread to execute downloadNews() - which (if necessary) downaloads
- *  the news.xml file and updates the list of news messages. It also
- *  initialises the addons manager (which can trigger another download of
- *  news.xml).
- *  \param force_refresh Re-download news.xml, even if
+/** Initialises the online part of the network manager. It downloads the
+ *  news.xml file from the server (if the frequency of downloads makes this
+ *  necessary), and (again if necessary) the addons.xml file.
+ *  \return 0 if an error happened and no online connection will be available,
+ *          1 otherwise.
  */
-void NewsManager::init(bool force_refresh)
+void NewsManager::init()
 {
-    // The rest (which potentially involves downloading news.xml) is handled
-    // in a separate thread, so that the GUI remains responsive.
-
-    pthread_attr_t  attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    // Should be the default, but just in case:
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    //pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
-    m_force_refresh = force_refresh;
-
-    pthread_t thread_id;
-    int error = pthread_create(&thread_id, &attr,
-                                &NewsManager::downloadNews, this);
-    if(error)
-    {
-        Log::warn("news", "Could not create thread, error=%d", error);
-        // In this case just execute the downloading code with this thread
-        downloadNews(this);
-    }
-    pthread_attr_destroy(&attr);
-
-}   //init
-
-// ---------------------------------------------------------------------------
-/** This function submits request which will download the news.xml file
- *  if necessary. It is running in its own thread, so we can use blocking
- *  download calls without blocking the GUI.
- *  \param obj This is 'this' object, passed on during pthread creation.
- */
-void* NewsManager::downloadNews(void *obj)
-{
-    NewsManager *me = (NewsManager*)obj;
-    me->clearErrorMessage();
+    UserConfigParams::m_news_last_updated = StkTime::getTimeSinceEpoch();
 
     std::string xml_file = file_manager->getAddonsFile("news.xml");
-    bool news_exists = file_manager->fileExists(xml_file);
-
-    // The news message must be updated if either it has never been updated,
-    // or if the time of the last update was more than news_frequency ago,
-    // or because a 'refresh' was explicitly requested by the user, or no
-    // news.xml file exists.
-    bool download = ( UserConfigParams::m_news_last_updated==0  ||
-                      UserConfigParams::m_news_last_updated
-                          +UserConfigParams::m_news_frequency
-                        < StkTime::getTimeSinceEpoch()          ||
-                      me->m_force_refresh                       ||
-                      !news_exists                                    )
-         && UserConfigParams::m_internet_status==RequestManager::IPERM_ALLOWED;
-
-    const XMLNode *xml = NULL;
-
-    if(!download && news_exists)
-    {
-        // If (so far) we don't need to download, there should be an existing
-        // file. Try to read this, and do some basic checks
-        xml = new XMLNode(xml_file);
-        // A proper news file has at least a version number, mtime, frequency
-        // and an include node (which contains addon data) defined. If this is
-        // not the case, assume that it is an invalid download, or a corrupt
-        // local file. Try downloading again after resetting the news server
-        // back to the default.
-        int version=-1;
-        if( !xml->get("version",   &version)  || version!=1 ||
-            !xml->get("mtime",     &version)  ||
-            !xml->getNode("include")          ||
-            !xml->get("frequency", &version)                )
-        {
-            delete xml;
-            xml       = NULL;
-            download = true;
-        }   // if xml not consistemt
-    }   // if !download
-
-    if(download)
-    {
-        core::stringw error_message("");
-
-        HTTPRequest *download_req = new HTTPRequest("news.xml");
-        download_req->setAddonsURL("news.xml");
-        // Initialise the online portion of the addons manager.
-        if(UserConfigParams::logAddons())
-            Log::info("addons", "Downloading news.");
-        download_req->executeNow();
-
-        if(download_req->hadDownloadError())
-        {
-            // Assume that the server address is wrong. And retry
-            // with the default server address again (just in case
-            // that a redirect went wrong, or a wrong/incorrect
-            // address somehow made its way into the config file.
-            delete download_req;
-            // We need a new object, since the state of the old
-            // download request is now done.
-            download_req = new HTTPRequest("news.xml");
-            UserConfigParams::m_server_addons.revertToDefaults();
-            // make sure the new server address is actually used
-            download_req->setAddonsURL("news.xml");
-            download_req->executeNow();
-
-            if(download_req->hadDownloadError())
-            {
-                // This message must be translated dynamically in the main menu.
-                // If it would be translated here, it wouldn't be translated
-                // if the language is changed in the menu!
-                error_message = N_("Error downloading news: '%s'.");
-                const char *const curl_error = download_req->getDownloadErrorMessage();
-                error_message = StringUtils::insertValues(error_message, curl_error);
-                addons_manager->setErrorState();
-                me->setErrorMessage(error_message);
-                Log::error("news", core::stringc(error_message).c_str());
-            }   // hadDownloadError
-        }   // hadDownloadError
-
-        if(!download_req->hadDownloadError())
-            UserConfigParams::m_news_last_updated = StkTime::getTimeSinceEpoch();
-        delete download_req;
-
-        // No download error, update the last_updated time value, and delete
-        // the potentially loaded xml file
-        delete xml;
-        xml = NULL;
-    }   // hadDownloadError
-
-    if(xml) delete xml;
-    xml = NULL;
-
-    // Process new.xml now.
-    if(file_manager->fileExists(xml_file))
-    {
-        xml = new XMLNode(xml_file);
-        me->checkRedirect(xml);
-        me->updateNews(xml, xml_file);
-        addons_manager->init(xml, me->m_force_refresh);
-        delete xml;
-    }
-
-    // We can't finish stk (esp. delete the file manager) before
-    // this part of the code is reached (since otherwise the file
-    // manager might be access after it was deleted).
-    me->setCanBeDeleted();
-    pthread_exit(NULL);
-    return 0;  // prevent warning
-}   // downloadNews
+    const XMLNode *xml   = new XMLNode(xml_file);
+    checkRedirect(xml);
+    updateNews(xml, xml_file);
+    delete xml;
+}   // init
 
 // ---------------------------------------------------------------------------
 /** Checks if a redirect is received, causing a new server to be used for
@@ -216,8 +72,10 @@ void NewsManager::checkRedirect(const XMLNode *xml)
     {
         if(UserConfigParams::logAddons())
         {
-            Log::info("[Addons]", "Current server: '%s'\n [Addons] New server: '%s'",
-                        UserConfigParams::m_server_addons.c_str(), new_server.c_str());
+            std::cout << "[Addons] Current server: "
+                      << (std::string)UserConfigParams::m_server_addons
+                      << std::endl
+                      << "[Addons] New server: " << new_server << std::endl;
         }
         UserConfigParams::m_server_addons = new_server;
     }
@@ -352,8 +210,8 @@ const core::stringw NewsManager::getImportantMessage()
 const core::stringw NewsManager::getNextNewsMessage()
 {
     // Only display error message in case of a problem.
-    if(m_error_message.getAtomic().size()>0)
-        return _(m_error_message.getAtomic().c_str());
+    if(m_error_message.size()>0)
+        return _(m_error_message.c_str());
 
     m_news.lock();
     if(m_all_news_messages.size()>0)

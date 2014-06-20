@@ -47,6 +47,9 @@ private:
     *  one time only (which might get triggered more than once). */
     enum AnimTimeType { ATT_CYCLIC, ATT_CYCLIC_ONCE } m_anim_type;
 
+    /** True if the animation is currently playing. */
+    bool  m_playing;
+
     /** The current time used in the IPOs. */
     float m_current_time;
 
@@ -63,13 +66,9 @@ protected:
     /** All IPOs for this animation. */
     PtrVector<Ipo>  m_all_ipos;
 
-    /** True if the animation is currently playing. */
-    bool  m_playing;
-    
 public:
                  AnimationBase(const XMLNode &node);
                  AnimationBase(Ipo *ipo);
-    virtual      ~AnimationBase() {}
     virtual void update(float dt, Vec3 *xyz=NULL, Vec3 *hpr=NULL,
                                   Vec3 *scale=NULL);
     /** This needs to be implemented by the inheriting classes. It is called

@@ -43,40 +43,21 @@ using namespace irr;
   */
 class FileManager : public NoCopy
 {
-public:
-    /** The various asset types (and directories) STK might request.
-     *  The last entry ASSET_COUNT specifies the number of entries. */
-    enum AssetType {ASSET_MIN,
-                    CHALLENGE=ASSET_MIN,
-                    FONT, GFX, GRANDPRIX, GUI, MODEL, MUSIC,
-                    SFX, SHADER, SKIN, TEXTURE, TRANSLATION,
-                    ASSET_MAX = TRANSLATION,
-                    ASSET_COUNT};
 private:
-
-    /** The names of the various subdirectories of the asset types. */
-    std::vector< std::string > m_subdir_name;
-
     /** Handle to irrlicht's file systems. */
     io::IFileSystem  *m_file_system;
 
     /** Directory where user config files are stored. */
-    std::string       m_user_config_dir;
+    std::string       m_config_dir;
 
     /** Directory where addons are stored. */
     std::string       m_addons_dir;
 
-    /** The list of all root directories. */
-    static std::vector<std::string> m_root_dirs;
+    /** Root data directory. */
+    std::string       m_root_dir;
 
     /** Directory to store screenshots in. */
     std::string       m_screenshot_dir;
-
-    /** Directory where resized textures are cached. */
-    std::string       m_cached_textures_dir;
-
-    /** Directory where user-defined grand prix are stored. */
-    std::string       m_gp_dir;
 
     std::vector<std::string>
                       m_texture_search_path,
@@ -94,8 +75,6 @@ private:
     bool              isDirectory(const std::string &path) const;
     void              checkAndCreateAddonsDir();
     void              checkAndCreateScreenshotDir();
-    void              checkAndCreateCachedTexturesDir();
-    void              checkAndCreateGPDir();
 #if !defined(WIN32) && !defined(__CYGWIN__) && !defined(__APPLE__)
     std::string       checkAndCreateLinuxDir(const char *env_name,
                                              const char *dir_name,
@@ -104,49 +83,50 @@ private:
 #endif
 
 public:
-                      FileManager();
+                      FileManager(char *argv[]);
                      ~FileManager();
     void              reInit();
     void              dropFileSystem();
-    static void       addRootDirs(const std::string &roots);
     io::IXMLReader   *createXMLReader(const std::string &filename);
     XMLNode          *createXMLTree(const std::string &filename);
-    XMLNode          *createXMLTreeFromString(const std::string & content);
 
+    std::string       getConfigDir() const;
+    std::string       getTextureDir() const;
+    std::string       getShaderDir() const;
     std::string       getScreenshotDir() const;
-    std::string       getCachedTexturesDir() const;
-    std::string       getGPDir() const;
-    std::string       getTextureCacheLocation(const std::string& filename);
     bool              checkAndCreateDirectoryP(const std::string &path);
     const std::string &getAddonsDir() const;
     std::string        getAddonsFile(const std::string &name);
     void checkAndCreateDirForAddons(const std::string &dir);
     bool removeFile(const std::string &name) const;
     bool removeDirectory(const std::string &name) const;
-    bool copyFile(const std::string &source, const std::string &dest);
+    std::string getDataDir       () const;
+    std::string getTranslationDir() const;
+    std::string getGUIDir        () const;
     std::vector<std::string>getMusicDirs() const;
-    std::string getAssetChecked(AssetType type, const std::string& name,
-                                bool abort_on_error=false) const;
-    std::string getAsset(AssetType type, const std::string &name) const;
-    std::string getAsset(const std::string &name) const;
-
-    std::string searchMusic(const std::string& file_name) const;
-    std::string searchTexture(const std::string& fname) const;
-    std::string getUserConfigFile(const std::string& fname) const;
+    std::string getTextureFile   (const std::string& fname) const;
+    std::string getDataFile      (const std::string& fname) const;
+    std::string getHighscoreFile (const std::string& fname) const;
+    std::string getChallengeFile (const std::string& fname) const;
+    std::string getTutorialFile  (const std::string& fname) const;
+    std::string getLogFile       (const std::string& fname) const;
+    std::string getItemFile      (const std::string& fname) const;
+    std::string getGfxFile       (const std::string& fname) const;
+    std::string getMusicFile     (const std::string& fname) const;
+    std::string getSFXFile       (const std::string& fname) const;
+    std::string getFontFile      (const std::string& fname) const;
+    std::string getModelFile     (const std::string& fname) const;
     void        listFiles        (std::set<std::string>& result,
                                   const std::string& dir,
+                                  bool is_full_path=false,
                                   bool make_full_path=false) const;
 
 
     void       pushTextureSearchPath(const std::string& path);
-    void       pushModelSearchPath(const std::string& path);
-    void       popTextureSearchPath();
-    void       popModelSearchPath();
-    void       popMusicSearchPath();
+    void       pushModelSearchPath  (const std::string& path);
+    void       popTextureSearchPath ();
+    void       popModelSearchPath   ();
     void       redirectOutput();
-
-    bool       fileIsNewer(const std::string& f1, const std::string& f2) const;
-
     // ------------------------------------------------------------------------
     /** Adds a directory to the music search path (or stack).
      */
@@ -154,11 +134,14 @@ public:
     {
         m_music_search_path.push_back(path);
     }   // pushMusicSearchPath
-
+    // ------------------------------------------------------------------------
+    /** Removes the last added directory from the music search path.
+     */
+    void popMusicSearchPath() {m_music_search_path.pop_back(); }
     // ------------------------------------------------------------------------
     /** Returns true if the specified file exists.
      */
-    bool fileExists(const std::string& path) const
+    bool fileExists(const std::string& path)
     {
         return m_file_system->existFile(path.c_str());
     }   // fileExists

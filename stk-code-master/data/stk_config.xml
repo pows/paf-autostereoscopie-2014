@@ -7,7 +7,7 @@
 
   <!-- Minimum and maxium track versions that be be read by this binary.
        Older versions will be ignored. -->
-  <track-version min="3" max="6"/>
+  <track-version min="3" max="5"/>
 
   <!-- Maximum number of karts to be used at the same time. This limit
        can easily be increased, but some tracks might not have valid start
@@ -94,15 +94,8 @@
   <!-- friction is the friction increase when a parachute is attached.
        time is the time an attached parachute is active
        time-other is the time a parachute attached from other kart works
-       lbound-fraction is the lower bound fraction of speed when lost will
-              detach parachute. E.g. at nearly 0 speed, only 5% of speed
-              need to be lost.
-       ubound-fraction is the upper bound fraction of speed when lost will
-              detach parachute. E.g. at max-speed 30% of speed must be lost.
-       max-speed is a factor that decides the impact of rate of speed 
-              (distance between bounds) -->
-  <parachute friction="2.0" time="4.0" time-other="8.0" 
-             lbound-fraction="0.95" ubound-fraction="0.7" max-speed="23"/>
+       done-fraction is the fraction of speed when lost will detach parachute -->
+  <parachute friction="2.0" time="4.0" time-other="8.0" done-fraction="0.7"/>
 
   <!-- time is the time till a bomb explodes. time-increase is the time added 
        to timer when bomb is passed on. -->

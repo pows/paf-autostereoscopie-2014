@@ -21,18 +21,11 @@
 
 #include <pthread.h>
 
-class ISynchronised
-{
-public :
-    virtual ~ISynchronised() {}
-    virtual void lock() const = 0 ;
-    virtual void unlock() const = 0;
-};
+template<typename TYPE>
 
 /** A variable that is automatically synchronised using pthreads mutex.
  */
-template<typename TYPE>
-class Synchronised : public ISynchronised
+class Synchronised
 {
 private:
     /** The mutex to protect this variable with. */
@@ -118,22 +111,6 @@ private:
     // Make sure that no actual copying is taking place
     // ------------------------------------------------------------------------
     void operator=(const Synchronised<TYPE>& v) {}
-};
-
-#define MutexLocker(x) MutexLockerHelper __dummy(x);
-
-class MutexLockerHelper
-{
-    const ISynchronised * m_synchronised;
-public:
-    MutexLockerHelper(const ISynchronised & synchronised){
-        m_synchronised = &synchronised;
-        m_synchronised->lock();
-    }
-
-    ~MutexLockerHelper(){
-        m_synchronised->unlock();
-    }
 };
 
 

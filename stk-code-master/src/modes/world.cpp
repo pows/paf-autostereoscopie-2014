@@ -18,11 +18,15 @@
 
 #include "modes/world.hpp"
 
-#include "achievements/achievement_info.hpp"
+#include <assert.h>
+#include <sstream>
+#include <stdexcept>
+#include <algorithm>
+#include <ctime>
+
 #include "audio/music_manager.hpp"
 #include "audio/sfx_base.hpp"
 #include "audio/sfx_manager.hpp"
-#include "config/player_manager.hpp"
 #include "challenges/unlock_manager.hpp"
 #include "config/user_config.hpp"
 #include "graphics/camera.hpp"
@@ -34,11 +38,12 @@
 #include "karts/controller/player_controller.hpp"
 #include "karts/controller/end_controller.hpp"
 #include "karts/controller/skidding_ai.hpp"
-#include "karts/controller/network_player_controller.hpp"
 #include "karts/kart.hpp"
 #include "karts/kart_properties_manager.hpp"
 #include "modes/overworld.hpp"
 #include "modes/profile_world.hpp"
+#include "network/network_manager.hpp"
+#include "network/race_state.hpp"
 #include "physics/btKart.hpp"
 #include "physics/physics.hpp"
 #include "physics/triangle_mesh.hpp"
@@ -60,13 +65,6 @@
 #include "utils/translation.hpp"
 #include "utils/string_utils.hpp"
 
-#include <algorithm>
-#include <assert.h>
-#include <ctime>
-#include <sstream>
-#include <stdexcept>
-
-
 World* World::m_world = NULL;
 
 /** The main world class is used to handle the track and the karts.
@@ -81,8 +79,8 @@ World* World::m_world = NULL;
  *  of all karts is set (i.e. in a normal race the arrival time for karts
  *  will be estimated), highscore is updated, and the race result gui
  *  is being displayed.
- *  Rescuing is handled via the three functions:
- *  getNumberOfRescuePositions() - which returns the number of rescue
+ *  Rescuing is handled via the three functions: 
+ *  getNumberOfRescuePositions() - which returns the number of rescue 
  *           positions defined.
  *  getRescuePositionIndex(AbstractKart *kart) - which determines the
  *           index of the rescue position to be used for the given kart.
@@ -120,7 +118,6 @@ World::World() : WorldStatus(), m_clear_color(255,100,101,140)
     m_schedule_exit_race = false;
     m_self_destruct      = false;
     m_schedule_tutorial  = false;
-    m_is_network_world   = false;
 
     m_stop_music_when_dialog_open = true;
 
@@ -136,6 +133,7 @@ World::World() : WorldStatus(), m_clear_color(255,100,101,140)
  */
 void World::init()
 {
+    race_state            = new RaceState();
     m_faster_music_active = false;
     m_fastest_kart        = 0;
     m_eliminated_karts    = 0;
@@ -185,14 +183,13 @@ void World::init()
 
     }  // for i
 
-    // Now that all models are loaded, apply the overrides
-    irr_driver->applyObjectPassShader();
-
     // Must be called after all karts are created
     m_race_gui->init();
 
     if(ReplayPlay::get())
         ReplayPlay::get()->Load();
+
+    network_manager->worldLoaded();
 
     powerup_manager->updateWeightsForRace(num_karts);
 }   // init
@@ -221,7 +218,6 @@ void World::reset()
     m_faster_music_active = false;
     m_eliminated_karts    = 0;
     m_eliminated_players  = 0;
-    m_is_network_world = false;
 
     for ( KartList::iterator i = m_karts.begin(); i != m_karts.end() ; ++i )
     {
@@ -300,10 +296,11 @@ AbstractKart *World::createKart(const std::string &kart_ident, int index,
         m_num_players ++;
         break;
     case RaceManager::KT_NETWORK_PLAYER:
-        controller = new NetworkPlayerController(new_kart,
-                        StateManager::get()->getActivePlayer(local_player_id));
-        m_num_players++;
-        break;
+        break;  // Avoid compiler warning about enum not handled.
+        //controller = new NetworkController(kart_ident, position, init_pos,
+        //                          global_player_id);
+        //m_num_players++;
+        //break;
     case RaceManager::KT_AI:
         controller = loadAIController(new_kart);
         break;
@@ -334,7 +331,7 @@ Controller* World::loadAIController(AbstractKart *kart)
             controller = new SkiddingAI(kart);
             break;
         default:
-            Log::warn("[World]", "Unknown AI, using default.");
+            Log::warn("World", "Unknown AI, using default.");
             controller = new SkiddingAI(kart);
             break;
     }
@@ -345,8 +342,6 @@ Controller* World::loadAIController(AbstractKart *kart)
 //-----------------------------------------------------------------------------
 World::~World()
 {
-    irr_driver->onUnloadWorld();
-
     if(ReplayPlay::get())
     {
         // Destroy the old replay object, which also stored the ghost
@@ -376,6 +371,7 @@ World::~World()
         // gui and this must be deleted.
         delete m_race_gui;
     }
+    delete race_state;
 
     for ( unsigned int i = 0 ; i < m_karts.size() ; i++ )
         delete m_karts[i];
@@ -441,79 +437,10 @@ void World::terminateRace()
     int best_finish_time = -1;
     std::string highscore_who = "";
     StateManager::ActivePlayer* best_player = NULL;
-    if (!this->isNetworkWorld())
-    {
-        updateHighscores(&best_highscore_rank, &best_finish_time, &highscore_who,
+    updateHighscores(&best_highscore_rank, &best_finish_time, &highscore_who,
                      &best_player);
-    }
 
-    // Check achievements
-    PlayerManager::increaseAchievement(AchievementInfo::ACHIEVE_COLUMBUS,
-                                       getTrack()->getIdent(), 1);
-    if (raceHasLaps())
-    {
-        PlayerManager::increaseAchievement(AchievementInfo::ACHIEVE_MARATHONER,
-                                           "laps", race_manager->getNumLaps());
-    }
-    
-    Achievement *achiev = PlayerManager::getCurrentAchievementsStatus()->getAchievement(AchievementInfo::ACHIEVE_GOLD_DRIVER);
-    if (achiev)
-    {
-        std::string mode_name = getIdent(); // Get the race mode name
-        int winner_position = 1;
-        unsigned int opponents = achiev->getInfo()->getGoalValue("opponents"); // Get the required opponents number
-        if (mode_name == IDENT_FTL)
-        {
-            winner_position = 2;
-            opponents++;
-        }
-        for(unsigned int i = 0; i < kart_amount; i++)
-        {
-            // Retrieve the current player
-            StateManager::ActivePlayer* p = m_karts[i]->getController()->getPlayer();
-            if (p && p->getConstProfile() == PlayerManager::getCurrentPlayer())
-            {
-                // Check if the player has won
-                if (m_karts[i]->getPosition() == winner_position && kart_amount > opponents )
-                {
-                    // Update the achievement
-                    mode_name = StringUtils::toLowerCase(mode_name);
-                    if (achiev->getValue("opponents") <= 0)
-                        PlayerManager::increaseAchievement(AchievementInfo::ACHIEVE_GOLD_DRIVER,
-                                                            "opponents", opponents);
-                    PlayerManager::increaseAchievement(AchievementInfo::ACHIEVE_GOLD_DRIVER,
-                                                        mode_name, 1);
-                }
-            }
-        } // for i < kart_amount
-    } // if (achiev)
-    
-    Achievement *win = PlayerManager::getCurrentAchievementsStatus()->getAchievement(AchievementInfo::ACHIEVE_UNSTOPPABLE);
-    //if achivement has been unlocked
-    if (win->getValue("wins") < 5 )
-    {
-        for(unsigned int i = 0; i < kart_amount; i++)
-        {
-            // Retrieve the current player
-            StateManager::ActivePlayer* p = m_karts[i]->getController()->getPlayer();
-            if (p && p->getConstProfile() == PlayerManager::getCurrentPlayer())
-            {
-                // Check if the player has won
-                if (m_karts[i]->getPosition() == 1 )
-                {
-                    // Increase number of consecutive wins
-                       PlayerManager::increaseAchievement(AchievementInfo::ACHIEVE_UNSTOPPABLE,
-                                                            "wins", 1);
-                }
-                else
-                {
-                      //Set number of consecutive wins to 0
-                      win->reset();
-                }
-            }
-         }
-    }
-    PlayerManager::getCurrentPlayer()->raceFinished();
+    unlock_manager->getCurrentSlot()->raceFinished();
 
     if (m_race_gui) m_race_gui->clearAllMessages();
     // we can't delete the race gui here, since it is needed in case of
@@ -560,7 +487,7 @@ void World::resetAllKarts()
         // Loop over all karts, in case that some karts are dfferent
         for(unsigned int kart_id=0; kart_id<m_karts.size(); kart_id++)
         {
-            for(unsigned int rescue_pos=0;
+            for(unsigned int rescue_pos=0; 
                 rescue_pos<getNumberOfRescuePositions();
                 rescue_pos++)
             {
@@ -596,12 +523,12 @@ void World::resetAllKarts()
 
         if (!kart_over_ground)
         {
-            Log::error("[World]",
+            Log::error("World",
                        "No valid starting position for kart %d on track %s.",
                         (int)(i-m_karts.begin()), m_track->getIdent().c_str());
             if (UserConfigParams::m_artist_debug_mode)
             {
-                Log::warn("[World]", "Activating fly mode.");
+                Log::warn("World", "Activating fly mode.");
                 (*i)->flyUp();
                 continue;
             }
@@ -623,14 +550,8 @@ void World::resetAllKarts()
     // Stil wait will all karts are in rest (and handle the case that a kart
     // fell through the ground, which can happen if a kart falls for a long
     // time, therefore having a high speed when hitting the ground.
-    int count = 0;
     while(!all_finished)
     {
-        if (count++ > 100)
-        {
-            Log::error("World", "Infitine loop waiting for all_finished?");
-            break;
-        }
         m_physics->update(1.f/60.f);
         all_finished=true;
         for ( KartList::iterator i=m_karts.begin(); i!=m_karts.end(); i++)
@@ -653,14 +574,14 @@ void World::resetAllKarts()
                                                    &normal);
                 if(!material)
                 {
-                    Log::error("[World]",
+                    Log::error("World",
                                "No valid starting position for kart %d "
                                "on track %s.",
                                (int)(i-m_karts.begin()),
                                m_track->getIdent().c_str());
                     if (UserConfigParams::m_artist_debug_mode)
                     {
-                        Log::warn("[World]", "Activating fly mode.");
+                        Log::warn("World", "Activating fly mode.");
                         (*i)->flyUp();
                         continue;
                     }
@@ -722,7 +643,7 @@ void World::moveKartTo(AbstractKart* kart, const btTransform &transform)
     kart->getBody()->setCenterOfMassTransform(pos);
 
     // Project kart to surface of track
-    // This will set the physics transform
+    // This will set the physics transform 
     m_track->findGround(kart);
 
 }   // moveKartTo
@@ -794,11 +715,6 @@ void World::updateWorld(float dt)
         return;
 
     update(dt);
-
-#ifdef DEBUG
-    assert(m_magic_number == 0xB01D6543);
-#endif
-    
     if( (!isFinishPhase()) && isRaceOver())
     {
         enterRaceOverState();
@@ -807,7 +723,6 @@ void World::updateWorld(float dt)
     {
         if (m_schedule_exit_race)
         {
-            m_schedule_exit_race = false;
             race_manager->exitRace();
             race_manager->setAIKartOverride("");
 
@@ -815,7 +730,6 @@ void World::updateWorld(float dt)
 
             if (m_schedule_tutorial)
             {
-                m_schedule_tutorial = false;
                 race_manager->setNumLocalPlayers(1);
                 race_manager->setMajorMode (RaceManager::MAJOR_MODE_SINGLE);
                 race_manager->setMinorMode (RaceManager::MINOR_MODE_TUTORIAL);
@@ -828,12 +742,13 @@ void World::updateWorld(float dt)
                 InputDevice* device = input_manager->getDeviceList()->getKeyboard(0);
 
                 // Create player and associate player with keyboard
-                StateManager::get()->createActivePlayer(PlayerManager::getCurrentPlayer(),
-                                                        device);
+                StateManager::get()
+                    ->createActivePlayer(unlock_manager->getCurrentPlayer(),
+                                         device);
 
                 if (!kart_properties_manager->getKart(UserConfigParams::m_default_kart))
                 {
-                    Log::warn("[World]",
+                    Log::warn("World", 
                               "Cannot find kart '%s', will revert to default.",
                               UserConfigParams::m_default_kart.c_str());
                     UserConfigParams::m_default_kart.revertToDefaults();
@@ -847,7 +762,7 @@ void World::updateWorld(float dt)
                     ->setSinglePlayer( StateManager::get()->getActivePlayer(0) );
 
                 StateManager::get()->enterGameState();
-                race_manager->setupPlayerKartInfo();
+                network_manager->setupPlayerKartInfo();
                 race_manager->startNew(true);
             }
             else
@@ -900,8 +815,11 @@ void World::update(float dt)
     if(ReplayPlay::get()) ReplayPlay::get()->update(dt);
     if(history->replayHistory()) dt=history->getNextDelta();
     WorldStatus::update(dt);
+    // Clear race state so that new information can be stored
+    race_state->clear();
 
-    if (!history->dontDoPhysics())
+    if(network_manager->getMode()!=NetworkManager::NW_CLIENT &&
+        !history->dontDoPhysics())
     {
         m_physics->update(dt);
     }
@@ -1008,10 +926,10 @@ void World::updateHighscores(int* best_highscore_rank, int* best_finish_time,
             // the kart location data is wrong
 
 #ifdef DEBUG
-            Log::error("[World]", "Incorrect kart positions:");
+            Log::error("World", "Incorrect kart positions:");
             for (unsigned int i=0; i<m_karts.size(); i++ )
             {
-                Log::error("[World]", "i=%d position %d.",i,
+                Log::error("World", "i=%d position %d.",i,
                            m_karts[i]->getPosition());
             }
 #endif
@@ -1024,6 +942,7 @@ void World::updateHighscores(int* best_highscore_rank, int* best_finish_time,
             continue;
         if (!m_karts[index[pos]]->hasFinishedRace()) continue;
 
+        assert(index[pos] >= 0);
         assert(index[pos] < m_karts.size());
         Kart *k = (Kart*)m_karts[index[pos]];
 
@@ -1031,9 +950,7 @@ void World::updateHighscores(int* best_highscore_rank, int* best_finish_time,
 
         PlayerController *controller = (PlayerController*)(k->getController());
 
-        int highscore_rank = 0;
-        if (controller->getPlayer()->getProfile() != NULL) // if we have the player profile here
-            highscore_rank = highscores->addData(k->getIdent(),
+        int highscore_rank = highscores->addData(k->getIdent(),
                               controller->getPlayer()->getProfile()->getName(),
                                                  k->getFinishTime());
 
@@ -1065,8 +982,7 @@ AbstractKart *World::getPlayerKart(unsigned int n) const
     unsigned int count=-1;
 
     for(unsigned int i=0; i<m_karts.size(); i++)
-        if(m_karts[i]->getController()->isPlayerController() ||
-            m_karts[i]->getController()->isNetworkController())
+        if(m_karts[i]->getController()->isPlayerController())
         {
             count++;
             if(count==n) return m_karts[i];
@@ -1191,13 +1107,6 @@ void World::delayedSelfDestruct()
 void World::escapePressed()
 {
     new RacePausedDialog(0.8f, 0.6f);
-}
-
-//-----------------------------------------------------------------------------
-
-bool World::isFogEnabled() const
-{
-    return m_track != NULL && m_track->isFogEnabled();
 }
 
 /* EOF */

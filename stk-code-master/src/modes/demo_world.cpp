@@ -18,11 +18,10 @@
 
 #include "modes/demo_world.hpp"
 
-#include "config/player_manager.hpp"
-#include "config/user_config.hpp"
 #include "guiengine/modaldialog.hpp"
 #include "input/device_manager.hpp"
 #include "input/input_manager.hpp"
+#include "network/network_manager.hpp"
 #include "race/race_manager.hpp"
 #include "tracks/track.hpp"
 #include "tracks/track_manager.hpp"
@@ -121,7 +120,7 @@ bool DemoWorld::updateIdleTimeAndStartDemo(float dt)
             && m_demo_tracks.size() > 0)
     {
         if(!track)
-            Log::warn("[DemoWorld]", "Invalid demo track identifier '%s'.",
+            printf("Invalid demo track identifier '%s'.\n",
                    m_demo_tracks[0].c_str());
         m_demo_tracks.erase(m_demo_tracks.begin());
         track = track_manager->getTrack(m_demo_tracks[0]);
@@ -131,7 +130,7 @@ bool DemoWorld::updateIdleTimeAndStartDemo(float dt)
     // be filled up with all the tracks.
     if(m_demo_tracks.size()==0)
     {
-        Log::warn("[DemoWorld]", "No valid tracks found, no demo started.");
+        printf("No valid tracks found, no demo started.\n");
         return false;
     }
 
@@ -142,7 +141,7 @@ bool DemoWorld::updateIdleTimeAndStartDemo(float dt)
     // Use keyboard 0 by default in --no-start-screen
     device = input_manager->getDeviceList()->getKeyboard(0);
     StateManager::get()->createActivePlayer(
-                           PlayerManager::get()->getPlayer(0), device);
+        UserConfigParams::m_all_players.get(0), device );
     // ASSIGN should make sure that only input from assigned devices
     // is read.
     input_manager->getDeviceList()->setAssignMode(ASSIGN);
@@ -150,7 +149,7 @@ bool DemoWorld::updateIdleTimeAndStartDemo(float dt)
     m_do_demo = true;
     race_manager->setNumKarts(m_num_karts);
     race_manager->setLocalKartInfo(0, "tux");
-    race_manager->setupPlayerKartInfo();
+    network_manager->setupPlayerKartInfo();
     race_manager->startSingleRace(m_demo_tracks[0], m_num_laps, false);
     m_demo_tracks.push_back(m_demo_tracks[0]);
     m_demo_tracks.erase(m_demo_tracks.begin());

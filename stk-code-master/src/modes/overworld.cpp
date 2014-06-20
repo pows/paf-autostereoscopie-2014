@@ -15,12 +15,8 @@
 //  along with this program; if not, write to the Free Software
 //  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-#include "modes/overworld.hpp"
-
 #include "audio/music_manager.hpp"
 #include "challenges/unlock_manager.hpp"
-#include "config/player_manager.hpp"
-#include "config/user_config.hpp"
 #include "graphics/irr_driver.hpp"
 #include "input/device_manager.hpp"
 #include "input/input.hpp"
@@ -29,13 +25,13 @@
 #include "karts/kart_properties.hpp"
 #include "karts/kart_properties_manager.hpp"
 #include "karts/rescue_animation.hpp"
-#include "physics/btKart.hpp"
+#include "modes/overworld.hpp"
 #include "physics/physics.hpp"
+#include "network/network_manager.hpp"
 #include "states_screens/dialogs/select_challenge.hpp"
-#include "states_screens/offline_kart_selection.hpp"
+#include "states_screens/kart_selection.hpp"
 #include "states_screens/race_gui_overworld.hpp"
 #include "tracks/track.hpp"
-#include "tracks/track_object_manager.hpp"
 
 //-----------------------------------------------------------------------------
 OverWorld::OverWorld() : WorldWithRank()
@@ -55,6 +51,7 @@ OverWorld::~OverWorld()
 /** Function to simplify the start process */
 void OverWorld::enterOverWorld()
 {
+
     race_manager->setNumLocalPlayers(1);
     race_manager->setMajorMode (RaceManager::MAJOR_MODE_SINGLE);
     race_manager->setMinorMode (RaceManager::MINOR_MODE_OVERWORLD);
@@ -66,13 +63,13 @@ void OverWorld::enterOverWorld()
     InputDevice* device = input_manager->getDeviceList()->getKeyboard(0);
 
     // Create player and associate player with keyboard
-    StateManager::get()->createActivePlayer(PlayerManager::getCurrentPlayer(),
+    StateManager::get()->createActivePlayer(unlock_manager->getCurrentPlayer(),
                                             device);
 
     if (!kart_properties_manager->getKart(UserConfigParams::m_default_kart))
     {
-        Log::warn("[overworld]", "cannot find kart '%s', "
-                  "will revert to default",
+        Log::warn("overworld", "cannot find kart '%s', "
+                  "will revert to default\n",
                   UserConfigParams::m_default_kart.c_str());
 
         UserConfigParams::m_default_kart.revertToDefaults();
@@ -86,7 +83,7 @@ void OverWorld::enterOverWorld()
         ->setSinglePlayer( StateManager::get()->getActivePlayer(0) );
 
     StateManager::get()->enterGameState();
-    race_manager->setupPlayerKartInfo();
+    network_manager->setupPlayerKartInfo();
     race_manager->startNew(false);
     if(race_manager->haveKartLastPositionOnOverworld()){
             OverWorld *ow = (OverWorld*)World::getWorld();
@@ -128,30 +125,12 @@ void OverWorld::update(float dt)
         m_karts[n]->setEnergy(100.0f);
     }
 
-    TrackObjectManager* tom = getTrack()->getTrackObjectManager();
-    PtrVector<TrackObject>& objects = tom->getObjects();
-    for(unsigned int i=0; i<objects.size(); i++)
-    {
-        TrackObject* obj = objects.get(i);
-        if(!obj->isGarage())
-            continue;
-
-        float m_distance = obj->getDistance();
-        Vec3 m_garage_pos = obj->getPosition();
-        Vec3 m_kart_pos = getKart(0)->getXYZ();
-
-        if ((m_garage_pos-m_kart_pos).length_2d() > m_distance)
-        {
-            obj->reset();
-        }
-    }
-
     if (m_return_to_garage)
     {
         m_return_to_garage = false;
         delayedSelfDestruct();
         race_manager->exitRace(false);
-        KartSelectionScreen* s = OfflineKartSelectionScreen::getInstance();
+        KartSelectionScreen* s = KartSelectionScreen::getInstance();
         s->setMultiplayer(false);
         s->setFromOverworld(true);
         StateManager::get()->resetAndGoToScreen(s);
@@ -166,6 +145,15 @@ void OverWorld::getKartsDisplayInfo(
 {
     assert(false);
 }   // getKartsDisplayInfo
+
+//-----------------------------------------------------------------------------
+/** Override the base class method to change behavior. We don't want wrong
+ *  direction messages in the overworld since there is no direction there.
+ *  \param i Kart id.
+ */
+void OverWorld::checkForWrongDirection(unsigned int i)
+{
+}   // checkForWrongDirection
 
 //-----------------------------------------------------------------------------
 
@@ -231,7 +219,6 @@ void OverWorld::onMouseClick(int x, int y)
         // be the location of the challenge bubble.
         AbstractKart* kart = getKart(0);
         kart->setXYZ(challenge->m_position);
-        kart->getVehicle()->capSpeed(0);
 
         unsigned int index   = getRescuePositionIndex(kart);
         btTransform s        = getRescueTransform(index);

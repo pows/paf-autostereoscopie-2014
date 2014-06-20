@@ -57,21 +57,21 @@ namespace GUIEngine
       *       needs, so we use ours. (i.e. always call these functions are never those
       *       in IGUIEnvironment)
       */
-    Widget* getFocusForPlayer(const unsigned int playerID);
+    Widget* getFocusForPlayer(const int playerID);
 
     /** \brief Focuses nothing for given player (removes any selection for this player).
       * \note Do NOT use irrLicht's GUI focus facilities; it's too limited for our
       *       needs, so we use ours. (i.e. always call these functions are never those
       *       in IGUIEnvironment)
       */
-    void focusNothingForPlayer(const unsigned int playerID);
+    void focusNothingForPlayer(const int playerID);
 
     /** \brief Returns whether given the widget is currently focused by given player.
       * \note  Do NOT use irrLicht's GUI focus facilities; it's too limited for our
       *        needs, so we use ours. (i.e. always call these functions are never those
       *        in IGUIEnvironment)
       */
-    bool isFocusedForPlayer(const Widget*w, const unsigned int playerID);
+    bool isFocusedForPlayer(const Widget*w, const int playerID);
 
     /**
       * In an attempt to make getters as fast as possible, by possibly still allowing inlining
@@ -170,7 +170,7 @@ namespace GUIEngine
     inline Skin*                      getSkin()          { return Private::g_skin;           }
 
     Screen*                           getScreenNamed(const char* name);
-    
+
     /** \return the height of the title font in pixels */
     int   getTitleFontHeight();
 
@@ -195,8 +195,6 @@ namespace GUIEngine
 
     /** \brief Add a screen to the list of screens known by the gui engine */
     void  addScreenToList(Screen* screen);
-    /** \brief Remove a screen from the list of screens known by the gui engine */
-    void  removeScreen(const char* name);
 
     /** \brief Low-level mean to change current screen.
       * \note Do not use directly. Use a state manager instead to get higher-level functionnality.

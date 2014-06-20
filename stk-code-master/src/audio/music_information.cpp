@@ -81,7 +81,6 @@ MusicInformation::MusicInformation(const XMLNode *root,
     m_normal_music    = NULL;
     m_fast_music      = NULL;
     m_enable_fast     = false;
-    m_music_waiting   = false;
     m_faster_time     = 1.0f;
     m_max_pitch       = 0.1f;
     m_gain            = 1.0f;
@@ -274,8 +273,6 @@ void MusicInformation::stopMusic()
         delete m_fast_music;
         m_fast_music=NULL;
     }
-    if(m_music_waiting)
-        m_music_waiting = false;
 }   // stopMusic
 
 //-----------------------------------------------------------------------------
@@ -287,12 +284,6 @@ void MusicInformation::pauseMusic()
 //-----------------------------------------------------------------------------
 void MusicInformation::resumeMusic()
 {
-    if(m_music_waiting)
-    {
-        startMusic();
-        m_music_waiting = false;
-        return;
-    }
     if (m_normal_music != NULL) m_normal_music->resumeMusic();
     if (m_fast_music   != NULL) m_fast_music->resumeMusic();
 }   // resumeMusic

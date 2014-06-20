@@ -17,12 +17,15 @@
 
 #include "modes/cutscene_world.hpp"
 
+#include <string>
+#include <IMeshSceneNode.h>
+#include <ISceneManager.h>
+
 #include "animations/animation_base.hpp"
 #include "animations/three_d_animation.hpp"
 #include "audio/music_manager.hpp"
+#include "challenges/game_slot.hpp"
 #include "challenges/unlock_manager.hpp"
-#include "config/player_manager.hpp"
-#include "graphics/camera.hpp"
 #include "graphics/irr_driver.hpp"
 #include "io/file_manager.hpp"
 #include "karts/abstract_kart.hpp"
@@ -32,22 +35,13 @@
 #include "physics/physics.hpp"
 #include "states_screens/credits.hpp"
 #include "states_screens/cutscene_gui.hpp"
-#include "states_screens/feature_unlocked.hpp"
-#include "states_screens/offline_kart_selection.hpp"
+#include "states_screens/kart_selection.hpp"
 #include "states_screens/main_menu_screen.hpp"
 #include "tracks/track.hpp"
 #include "tracks/track_object.hpp"
 #include "tracks/track_object_manager.hpp"
 #include "utils/constants.hpp"
 #include "utils/ptr_vector.hpp"
-
-#include <IMeshSceneNode.h>
-#include <ISceneManager.h>
-
-#include <algorithm>
-#include <string>
-
-bool CutsceneWorld::s_use_duration = false;
 
 //-----------------------------------------------------------------------------
 /** Constructor. Sets up the clock mode etc.
@@ -78,11 +72,9 @@ void CutsceneWorld::init()
 
     //const btTransform &s = getTrack()->getStartTransform(0);
     //const Vec3 &v = s.getOrigin();
-    Camera* stk_cam = Camera::createCamera(NULL);
-    m_camera = stk_cam->getCameraSceneNode();
-    //m_camera = irr_driver->getSceneManager()
-    //         ->addCameraSceneNode(NULL, core::vector3df(0.0f, 0.0f, 0.0f),
-    //                              core::vector3df(0.0f, 0.0f, 0.0f));
+    m_camera = irr_driver->getSceneManager()
+             ->addCameraSceneNode(NULL, core::vector3df(0.0f, 0.0f, 0.0f),
+                                  core::vector3df(0.0f, 0.0f, 0.0f));
     m_camera->setFOV(0.61f);
     m_camera->bindTargetAndRotation(true); // no "look-at"
 
@@ -103,7 +95,7 @@ void CutsceneWorld::init()
 
                 if (!StringUtils::fromString(frameStr, frame))
                 {
-                    Log::error("[CutsceneWorld]", "Invalid condition '%s'",
+                    fprintf(stderr, "[CutsceneWorld] Invalid condition '%s'\n",
                                     condition.c_str());
                     continue;
                 }
@@ -123,7 +115,7 @@ void CutsceneWorld::init()
 
                 if (!StringUtils::fromString(frameStr, frame))
                 {
-                    Log::error("[CutsceneWorld]", "Invalid condition '%s'",
+                    fprintf(stderr, "[CutsceneWorld] Invalid condition '%s'\n",
                                     condition.c_str());
                     continue;
                 }
@@ -138,7 +130,7 @@ void CutsceneWorld::init()
 
                 if (!StringUtils::fromString(frameStr, frame))
                 {
-                    Log::error("[CutsceneWorld]", "Invalid condition '%s'",
+                    fprintf(stderr, "[CutsceneWorld] Invalid condition '%s'\n",
                                     condition.c_str());
                     continue;
                 }
@@ -156,12 +148,9 @@ void CutsceneWorld::init()
         }
     }
 
-    if (!s_use_duration)
-        m_duration = 999999.0f;
-
     if (m_duration <= 0.0f)
     {
-        Log::error("[CutsceneWorld]", "WARNING: cutscene has no duration");
+        fprintf(stderr, "[CutsceneWorld] WARNING: cutscene has no duration\n");
     }
 }   // CutsceneWorld
 
@@ -178,7 +167,7 @@ CutsceneWorld::~CutsceneWorld()
  */
 const std::string& CutsceneWorld::getIdent() const
 {
-    return IDENT_CUTSCENE;
+    return IDENT_CUSTSCENE;
 }   // getIdent
 
 //-----------------------------------------------------------------------------
@@ -189,12 +178,12 @@ void CutsceneWorld::update(float dt)
 {
     /*
     {
-    PtrVector<TrackObject>& objects = m_track->getTrackObjectManager()->getObjects();
-    TrackObject* curr;
-    for_in(curr, objects)
-    {
-    printf("* %s\n", curr->getType().c_str());
-    }
+        PtrVector<TrackObject>& objects = m_track->getTrackObjectManager()->getObjects();
+        TrackObject* curr;
+        for_in(curr, objects)
+        {
+            printf("* %s\n", curr->getType().c_str());
+        }
     }
     **/
 
@@ -237,29 +226,18 @@ void CutsceneWorld::update(float dt)
         dt = (float)(m_time - prev_time);
     }
 
-    float fade = 0.0f;
-    float fadeIn = -1.0f;
-    float fadeOut = -1.0f;
+    float fade;
     if (m_time < 2.0f)
     {
-        fadeIn = 1.0f - (float)m_time / 2.0f;
+        fade = 1.0f - (float)m_time / 2.0f;
     }
-    if (m_time > m_duration - 2.0f)
+    else if (m_time > m_duration - 2.0f)
     {
-        fadeOut = (float)(m_time - (m_duration - 2.0f)) / 2.0f;
+        fade = (float)(m_time - (m_duration - 2.0f)) / 2.0f;
     }
-
-    if (fadeIn >= 0.0f && fadeOut >= 0.0f)
+    else
     {
-        fade = std::max(fadeIn, fadeOut);
-    }
-    else if (fadeIn >= 0.0f)
-    {
-        fade = fadeIn;
-    }
-    else if (fadeOut >= 0.0f)
-    {
-        fade = fadeOut;
+        fade = 0.0f;
     }
     dynamic_cast<CutsceneGUI*>(m_race_gui)->setFadeLevel(fade);
 
@@ -367,27 +345,12 @@ void CutsceneWorld::update(float dt)
             it++;
         }
     }
-
-    //bool isOver = (m_time > m_duration);
-    //if (isOver && (s_use_duration || m_aborted))
-    //{
-    //    GUIEngine::CutsceneScreen* cs = dynamic_cast<GUIEngine::CutsceneScreen*>(
-    //        GUIEngine::getCurrentScreen());
-    //    if (cs != NULL)
-    //        cs->onCutsceneEnd();
-    //}
 }   // update
 
 //-----------------------------------------------------------------------------
 
 void CutsceneWorld::enterRaceOverState()
 {
-    GUIEngine::CutsceneScreen* cs = dynamic_cast<GUIEngine::CutsceneScreen*>(
-        GUIEngine::getCurrentScreen());
-    if (cs != NULL)
-        cs->onCutsceneEnd();
-
-
     int partId = -1;
     for (int i=0; i<(int)m_parts.size(); i++)
     {
@@ -400,7 +363,6 @@ void CutsceneWorld::enterRaceOverState()
 
     if (m_aborted || partId == -1 || partId == (int)m_parts.size() - 1)
     {
-        // TODO: remove hardcoded knowledge of cutscenes, replace with scripting probably
         if (m_parts.size() == 1 && m_parts[0] == "endcutscene")
         {
             CreditsScreen* credits = CreditsScreen::getInstance();
@@ -411,144 +373,21 @@ void CutsceneWorld::enterRaceOverState()
             StateManager::get()->resetAndSetStack(newStack);
             StateManager::get()->pushScreen(credits);
         }
-        // TODO: remove hardcoded knowledge of cutscenes, replace with scripting probably
-        else  if (m_parts.size() == 1 && m_parts[0] == "gpwin")
-        {
-            race_manager->exitRace();
-
-            // un-set the GP mode so that after unlocking, it doesn't try to continue the GP
-            race_manager->setMajorMode(RaceManager::MAJOR_MODE_SINGLE);
-
-            std::vector<const ChallengeData*> unlocked =
-                PlayerManager::getCurrentPlayer()->getRecentlyCompletedChallenges();
-            if (unlocked.size() > 0)
-            {
-                //PlayerManager::getCurrentPlayer()->clearUnlocked();
-
-                StateManager::get()->enterGameState();
-                race_manager->setMinorMode(RaceManager::MINOR_MODE_CUTSCENE);
-                race_manager->setNumKarts(0);
-                race_manager->setNumPlayers(0);
-                race_manager->setNumLocalPlayers(0);
-                race_manager->startSingleRace("featunlocked", 999, false);
-
-                FeatureUnlockedCutScene* scene =
-                    FeatureUnlockedCutScene::getInstance();
-                std::vector<std::string> parts;
-                parts.push_back("featunlocked");
-                ((CutsceneWorld*)World::getWorld())->setParts(parts);
-
-                assert(unlocked.size() > 0);
-                scene->addTrophy(race_manager->getDifficulty());
-                scene->findWhatWasUnlocked(race_manager->getDifficulty());
-
-                StateManager::get()->replaceTopMostScreen(scene, GUIEngine::INGAME_MENU);
-            }
-            else
-            {
-                if (race_manager->raceWasStartedFromOverworld())
-                {
-                    //StateManager::get()->resetAndGoToScreen(MainMenuScreen::getInstance());
-                    OverWorld::enterOverWorld();
-                }
-                else
-                {
-                    StateManager::get()->resetAndGoToScreen(MainMenuScreen::getInstance());
-                    // we assume the main menu was pushed before showing this menu
-                    //StateManager::get()->popMenu();
-                }
-            }
-        }
-        // TODO: remove hardcoded knowledge of cutscenes, replace with scripting probably
-        else if (m_parts.size() == 1 && m_parts[0] == "gplose")
-        {
-            //race_manager->exitRace();
-            //StateManager::get()->resetAndGoToScreen(MainMenuScreen::getInstance());
-            //if (race_manager->raceWasStartedFromOverworld())
-            //    OverWorld::enterOverWorld();
-
-            race_manager->exitRace();
-
-            // un-set the GP mode so that after unlocking, it doesn't try to continue the GP
-            race_manager->setMajorMode(RaceManager::MAJOR_MODE_SINGLE);
-
-            std::vector<const ChallengeData*> unlocked =
-                PlayerManager::getCurrentPlayer()->getRecentlyCompletedChallenges();
-            if (unlocked.size() > 0)
-            {
-                //PlayerManager::getCurrentPlayer()->clearUnlocked();
-
-                StateManager::get()->enterGameState();
-                race_manager->setMinorMode(RaceManager::MINOR_MODE_CUTSCENE);
-                race_manager->setNumKarts(0);
-                race_manager->setNumPlayers(0);
-                race_manager->setNumLocalPlayers(0);
-                race_manager->startSingleRace("featunlocked", 999, false);
-
-                FeatureUnlockedCutScene* scene =
-                    FeatureUnlockedCutScene::getInstance();
-                std::vector<std::string> parts;
-                parts.push_back("featunlocked");
-                ((CutsceneWorld*)World::getWorld())->setParts(parts);
-
-                scene->addTrophy(race_manager->getDifficulty());
-                scene->findWhatWasUnlocked(race_manager->getDifficulty());
-
-                StateManager::get()->replaceTopMostScreen(scene, GUIEngine::INGAME_MENU);
-            }
-            else
-            {
-                if (race_manager->raceWasStartedFromOverworld())
-                {
-                    //StateManager::get()->resetAndGoToScreen(MainMenuScreen::getInstance());
-                    OverWorld::enterOverWorld();
-                }
-                else
-                {
-                    StateManager::get()->resetAndGoToScreen(MainMenuScreen::getInstance());
-                    // we assume the main menu was pushed before showing this menu
-                    //StateManager::get()->popMenu();
-                }
-            }
-        }
-        // TODO: remove hardcoded knowledge of cutscenes, replace with scripting probably
         else if (race_manager->getTrackName() == "introcutscene" ||
                  race_manager->getTrackName() == "introcutscene2")
         {
-            PlayerProfile *player = PlayerManager::getCurrentPlayer();
-            if (player->isFirstTime())
+            GameSlot* slot = unlock_manager->getCurrentSlot();
+            if (slot->isFirstTime())
             {
                 race_manager->exitRace();
                 StateManager::get()->resetAndGoToScreen(MainMenuScreen::getInstance());
 
-                player->setFirstTime(false);
-                PlayerManager::get()->save();
-                KartSelectionScreen* s = OfflineKartSelectionScreen::getInstance();
+                slot->setFirstTime(false);
+                unlock_manager->save();
+                KartSelectionScreen* s = KartSelectionScreen::getInstance();
                 s->setMultiplayer(false);
                 s->setGoToOverworldNext();
                 StateManager::get()->pushScreen( s );
-            }
-        }
-        // TODO: remove hardcoded knowledge of cutscenes, replace with scripting probably
-        else if (m_parts.size() == 1 && m_parts[0] == "featunlocked")
-        {
-            if (race_manager->getMajorMode() == RaceManager::MAJOR_MODE_GRAND_PRIX)
-            {
-                // in GP mode, continue GP after viewing this screen
-                StateManager::get()->popMenu();
-                race_manager->next();
-            }
-            else
-            {
-                // back to menu or overworld
-                race_manager->exitRace();
-                StateManager::get()->resetAndGoToScreen(MainMenuScreen::getInstance());
-                //StateManager::get()->popMenu();
-
-                if (race_manager->raceWasStartedFromOverworld())
-                {
-                    OverWorld::enterOverWorld();
-                }
             }
         }
         else
@@ -574,12 +413,7 @@ void CutsceneWorld::enterRaceOverState()
  */
 bool CutsceneWorld::isRaceOver()
 {
-    bool isOver = (m_time > m_duration);
-
-    if (!s_use_duration && !m_aborted)
-        return false;
-
-    return isOver;
+    return m_time > m_duration;
 }   // isRaceOver
 
 //-----------------------------------------------------------------------------

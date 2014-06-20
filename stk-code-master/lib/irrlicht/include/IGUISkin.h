@@ -12,7 +12,6 @@
 
 namespace irr
 {
-namespace video { class ITexture; }
 namespace gui
 {
 	class IGUIFont;
@@ -565,10 +564,6 @@ namespace gui
 
 		//! get the type of this skin
 		virtual EGUI_SKIN_TYPE getType() const { return EGST_UNKNOWN; }
-
-        virtual void draw2DImage(const video::ITexture* texture, const core::rect<s32>& destRect,
-            const core::rect<s32>& sourceRect, const core::rect<s32>* clipRect,
-            const video::SColor* const colors, bool useAlphaChannelOfTexture) = 0;
 	};
 
 

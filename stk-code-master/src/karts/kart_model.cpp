@@ -325,7 +325,7 @@ KartModel* KartModel::makeCopy()
 /** Attach the kart model and wheels to the scene node.
  *  \return the node with the model attached
  */
-scene::ISceneNode* KartModel::attachModel(bool animated_models, bool always_animated)
+scene::ISceneNode* KartModel::attachModel(bool animated_models)
 {
     assert(!m_is_master);
 
@@ -342,22 +342,10 @@ scene::ISceneNode* KartModel::attachModel(bool animated_models, bool always_anim
         // as animated mesh are not cheap to render use frustum box culling
         node->setAutomaticCulling(scene::EAC_FRUSTUM_BOX);
 
-        if (always_animated)
-        {
-            // give a huge LOD distance for the player's kart. the reason is that it should
-            // use its animations for the shadow pass too, where the camera can be quite far
-            lod_node->add(10000, node, true);
-            scene::ISceneNode* static_model = attachModel(false, false);
-            lod_node->add(10001, static_model, true);
-            m_animated_node = static_cast<scene::IAnimatedMeshSceneNode*>(node);
-        }
-        else
-        {
-            lod_node->add(20, node, true);
-            scene::ISceneNode* static_model = attachModel(false, false);
-            lod_node->add(100, static_model, true);
-            m_animated_node = static_cast<scene::IAnimatedMeshSceneNode*>(node);
-        }
+        lod_node->add(50, node, true);
+        scene::ISceneNode* static_model = attachModel(false);
+        lod_node->add(500, static_model, true);
+        m_animated_node = static_cast<scene::IAnimatedMeshSceneNode*>(node);
 
         attachHat();
 
@@ -375,7 +363,7 @@ scene::ISceneNode* KartModel::attachModel(bool animated_models, bool always_anim
         // Become the owner of the wheels
         for(unsigned int i=0; i<4; i++)
         {
-            if (!m_wheel_model[i] || !m_wheel_node[i]) continue;
+            if(!m_wheel_model[i]) continue;
             m_wheel_node[i]->setParent(lod_node);
         }
 
@@ -384,15 +372,6 @@ scene::ISceneNode* KartModel::attachModel(bool animated_models, bool always_anim
         {
             if(!m_speed_weighted_objects[i].m_node) continue;
             m_speed_weighted_objects[i].m_node->setParent(lod_node);
-        }
-
-        // Enable rim lighting for the kart
-        irr_driver->applyObjectPassShader(lod_node, true);
-        std::vector<scene::ISceneNode*> &lodnodes = lod_node->getAllNodes();
-        const u32 max = lodnodes.size();
-        for (u32 i = 0; i < max; i++)
-        {
-            irr_driver->applyObjectPassShader(lodnodes[i], true);
         }
     }
     else
@@ -422,7 +401,6 @@ scene::ISceneNode* KartModel::attachModel(bool animated_models, bool always_anim
             m_wheel_graphics_radius[i] = 0.5f*(wheel_max.getY() - wheel_min.getY());
 
             m_wheel_node[i]->grab();
-            ((scene::IMeshSceneNode *) m_wheel_node[i])->setReadOnlyMaterials(true);
     #ifdef DEBUG
             std::string debug_name = m_wheel_filename[i]+" (wheel)";
             m_wheel_node[i]->setName(debug_name.c_str());
@@ -474,7 +452,7 @@ bool KartModel::loadModels(const KartProperties &kart_properties)
     irr_driver->grabAllTextures(m_mesh);
 
     Vec3 kart_min, kart_max;
-    MeshTools::minMax3D(m_mesh->getMesh(m_animation_frame[AF_STRAIGHT]),
+    MeshTools::minMax3D(m_mesh->getMesh(m_animation_frame[AF_STRAIGHT]), 
                         &kart_min, &kart_max);
 
 #undef MOVE_KART_MESHES
@@ -492,7 +470,7 @@ bool KartModel::loadModels(const KartProperties &kart_properties)
     core::matrix4 translate(core::matrix4::EM4CONST_IDENTITY);
     translate.setTranslation(offset_from_center.toIrrVector());
     mani->transform(m_mesh, translate);
-    MeshTools::minMax3D(m_mesh->getMesh(m_animation_frame[AF_STRAIGHT]),
+    MeshTools::minMax3D(m_mesh->getMesh(m_animation_frame[AF_STRAIGHT]), 
                         &kart_min, &kart_max);
 #endif
     m_kart_highest_point = kart_max.getY();
@@ -782,7 +760,7 @@ void KartModel::OnAnimationEnd(scene::IAnimatedMeshSceneNode *node)
  *  \param suspension Suspension height for all four wheels.
  *  \param speed The speed of the kart in meters/sec, used for the speed-weighted objects' animations
  */
-void KartModel::update(float dt, float rotation_dt, float steer,
+void KartModel::update(float dt, float rotation_dt, float steer, 
                        const float height_above_terrain[4], float speed)
 {
    core::vector3df wheel_steer(0, steer*30.0f, 0);
@@ -801,7 +779,7 @@ void KartModel::update(float dt, float rotation_dt, float steer,
         }
 #endif
         core::vector3df pos =  m_wheel_graphics_position[i].toIrrVector();
-        pos.Y = m_kart_lowest_point -  height_above_terrain[i]
+        pos.Y = m_kart_lowest_point -  height_above_terrain[i] 
               + m_wheel_graphics_radius[i];
         m_wheel_node[i]->setPosition(pos);
 
@@ -866,7 +844,7 @@ void KartModel::update(float dt, float rotation_dt, float steer,
                     core::matrix4 *m = &irrMaterial.getTextureMatrix(j);
                     m->setTextureTranslate(obj.m_texture_cur_offset.X, obj.m_texture_cur_offset.Y);
                 }   // for j<MATERIAL_MAX_TEXTURES
-            }   // for i<getMaterialCount
+            }   // for i<getMaterialCount 
         }
 #undef GET_VALUE
     }
@@ -900,10 +878,10 @@ void KartModel::attachHat(){
             bone = m_animated_node->getJointNode("head");
         if(bone)
         {
-            // Till we have all models fixed, accept Head and head as bone name
+             // Till we have all models fixed, accept Head and head as bone naartme
             scene::IMesh *hat_mesh =
                 irr_driver->getAnimatedMesh(
-                           file_manager->getAsset(FileManager::MODEL, m_hat_name));
+                     file_manager->getModelFile(m_hat_name));
             m_hat_node = irr_driver->addMesh(hat_mesh);
             bone->addChild(m_hat_node);
             m_animated_node->setCurrentFrame((float)m_animation_frame[AF_STRAIGHT]);

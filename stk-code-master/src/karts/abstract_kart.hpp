@@ -83,7 +83,6 @@ public:
                                 int world_kart_id,
                                 int position, const btTransform& init_transform);
     virtual       ~AbstractKart();
-    virtual core::stringw getName() const;
     virtual void   reset();
     virtual void   init(RaceManager::KartType type) = 0;
     // ========================================================================
@@ -110,7 +109,8 @@ public:
     // ------------------------------------------------------------------------
     /** Sets the kart properties. */
     void setKartProperties(const KartProperties *kp) { m_kart_properties=kp; }
-
+    // ------------------------------------------------------------------------
+    virtual const wchar_t* getName() const;
     // ------------------------------------------------------------------------
     /** Returns a unique identifier for this kart (name of the directory the
      *  kart was loaded from). */
@@ -272,7 +272,7 @@ public:
      *  \param add_info Additional info, used in networking games to force
      *         a specific item to be used (instead of a random item) to keep
      *         all karts in synch. */
-    virtual void  collectedItem(Item *item, int add_info) = 0;
+    virtual void  collectedItem(Item *item, int random_attachment) = 0;
     // ------------------------------------------------------------------------
     /** Returns the current position of this kart in the race. */
     virtual int getPosition() const = 0;

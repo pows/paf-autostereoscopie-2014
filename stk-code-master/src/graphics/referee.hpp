@@ -19,10 +19,7 @@
 #ifndef HEADER_REFEREE_HPP
 #define HEADER_REFEREE_HPP
 
-#include <ISceneNode.h>
-#include <IAnimatedMeshSceneNode.h>
-#include <ISceneManager.h>
-#include <IMeshManipulator.h>
+#include "irrlicht.h"
 using namespace irr;
 
 #include "utils/vec3.hpp"

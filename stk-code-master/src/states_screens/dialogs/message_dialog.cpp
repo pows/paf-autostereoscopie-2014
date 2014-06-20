@@ -29,29 +29,20 @@ using namespace GUIEngine;
 
 // ------------------------------------------------------------------------------------------------------
 
-MessageDialog::MessageDialog(const irr::core::stringw &msg, MessageDialogType type,
+MessageDialog::MessageDialog(const irr::core::stringw &msg, MessageDialogType type, 
                              IConfirmDialogListener* listener, bool own_listener) :
     ModalDialog(0.6f, 0.6f)
 {
-    m_msg = msg;
-    doInit(type, listener, own_listener);
+    doInit(msg, type, listener, own_listener);
 }   // MessageDialog(stringw, type, listener, own_listener)
 
 // ------------------------------------------------------------------------------------------------------
 
-MessageDialog::MessageDialog(const irr::core::stringw &msg, bool from_queue) :
+MessageDialog::MessageDialog(const irr::core::stringw &msg) :
     ModalDialog(0.6f, 0.6f)
 {
-    m_msg = msg;
-    if(!from_queue) load();
+    doInit(msg, MessageDialog::MESSAGE_DIALOG_OK, NULL, false);
 }   // MessageDialog(stringw)
-
-// ------------------------------------------------------------------------------------------------------
-
-void MessageDialog::load()
-{
-    doInit(MessageDialog::MESSAGE_DIALOG_OK, NULL, false);
-}
 
 // ------------------------------------------------------------------------------------------------------
 
@@ -67,7 +58,7 @@ MessageDialog::~MessageDialog()
 
 // ------------------------------------------------------------------------------------------------------
 
-void MessageDialog::doInit(MessageDialogType type,
+void MessageDialog::doInit(const irr::core::stringw &msg, MessageDialogType type,
                            IConfirmDialogListener* listener, bool own_listener)
 {
     if (StateManager::get()->getGameState() == GUIEngine::GAME)
@@ -82,7 +73,7 @@ void MessageDialog::doInit(MessageDialogType type,
     m_own_listener = own_listener;
 
     LabelWidget* message = getWidget<LabelWidget>("title");
-    message->setText( m_msg.c_str(), false );
+    message->setText( msg.c_str(), false );
 
     // If the dialog is a simple 'OK' dialog, then hide the "Yes" button and
     // change "Cancel" to "OK"

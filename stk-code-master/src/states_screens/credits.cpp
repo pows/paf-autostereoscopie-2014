@@ -141,7 +141,7 @@ void CreditsScreen::loadedFromFile()
 
     m_throttle_FPS = false;
 
-    std::string creditsfile = file_manager->getAsset("CREDITS");
+    std::string creditsfile = file_manager->getDataDir() + "/CREDITS";
 
     std::ifstream file( creditsfile.c_str() ) ;
 
@@ -273,7 +273,7 @@ void CreditsScreen::reset()
 
 // ----------------------------------------------------------------------------
 
-void CreditsScreen::onUpdate(float elapsed_time)
+void CreditsScreen::onUpdate(float elapsed_time, irr::video::IVideoDriver*)
 {
     // multiply by 0.8 to slow it down a bit as a whole
     time_before_next_step -= elapsed_time*0.8f;

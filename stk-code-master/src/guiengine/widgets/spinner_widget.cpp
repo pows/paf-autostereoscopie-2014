@@ -39,13 +39,13 @@ using namespace irr::video;
 SpinnerWidget::SpinnerWidget(const bool gauge) : Widget(WTYPE_SPINNER)
 {
     m_gauge = gauge;
+
     m_listener = NULL;
     m_graphical = false;
     m_check_inside_me = true; //FIXME: not sure this is necessary
     m_supports_multiplayer = true;
     m_value = -1;
-    m_use_background_color=false;
-    m_spinner_widget_player_id=-1;
+
     m_min = 0;
     m_max = 999;
 }
@@ -62,17 +62,17 @@ void SpinnerWidget::add()
 
     if (min_s.size() > 0)
     {
-        if (!StringUtils::parseString<int>(min_s, &m_min))
+		if (!StringUtils::parseString<int>(min_s, &m_min))
         {
-            Log::warn("invalid value for spinner widget minimum value : %s", min_s.c_str());
+			Log::warn("invalid value for spinner widget minimum value : %s", min_s.c_str());
         }
     }
 
     if (max_s.size() > 0)
     {
-        if (!StringUtils::parseString<int>(max_s, &m_max))
-        {
-            Log::warn("invalid value for spinner widget maximum value : %s", max_s.c_str());
+		if (!StringUtils::parseString<int>(max_s, &m_max))
+		{
+			Log::warn("invalid value for spinner widget maximum value : %s", max_s.c_str());
         }
     }
 
@@ -160,7 +160,6 @@ void SpinnerWidget::add()
         {
             label->setText(m_labels[m_value].c_str() );
         }
-    
     }
 
 
@@ -174,17 +173,17 @@ void SpinnerWidget::add()
     m_children[2].m_id = m_children[2].m_element->getID();
 
     // refresh display
-    
-
     setValue(m_value);
 }
+
 // -----------------------------------------------------------------------------
 
 ITexture* SpinnerWidget::getTexture()
 {
     assert(m_graphical);
-    std::string s = StringUtils::insertValues(m_properties[PROP_ICON], m_value);
-    std::string imagefile = file_manager->searchTexture(s);
+    std::ostringstream icon_stream;
+    icon_stream << file_manager->getDataDir() << m_properties[PROP_ICON];
+    std::string imagefile = StringUtils::insertValues(icon_stream.str(), m_value);
     ITexture* texture = irr_driver->getTexture(imagefile);
     return texture;
 }
@@ -324,8 +323,9 @@ void SpinnerWidget::setValue(const int new_value)
 
     if (m_graphical)
     {
-        std::string s = StringUtils::insertValues(m_properties[PROP_ICON], m_value);
-        std::string imagefile = file_manager->searchTexture(s);
+        std::ostringstream icon;
+        icon << file_manager->getDataDir() << m_properties[PROP_ICON];
+        std::string imagefile = StringUtils::insertValues(icon.str(), m_value);
         ((IGUIImage*)(m_children[1].m_element))->setImage(irr_driver->getTexture(imagefile));
     }
     else if (m_labels.size() > 0 && m_children.size() > 0)

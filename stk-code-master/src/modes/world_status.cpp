@@ -21,12 +21,12 @@
 #include "audio/sfx_manager.hpp"
 #include "audio/sfx_base.hpp"
 #include "config/stk_config.hpp"
-#include "config/user_config.hpp"
 #include "graphics/irr_driver.hpp"
 #include "guiengine/modaldialog.hpp"
 #include "karts/abstract_kart.hpp"
 #include "modes/world.hpp"
 #include "tracks/track.hpp"
+#include "network/network_manager.hpp"
 
 #include <irrlicht.h>
 
@@ -112,6 +112,8 @@ void WorldStatus::enterRaceOverState()
  */
 void WorldStatus::terminateRace()
 {
+    if(network_manager->getMode()==NetworkManager::NW_SERVER)
+        network_manager->sendRaceResults();
 }   // terminateRace
 
 //-----------------------------------------------------------------------------
