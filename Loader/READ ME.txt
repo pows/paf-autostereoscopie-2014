@@ -1,0 +1,31 @@
+Paramètres d'entrée du programme : 
+
+	> Régler le nombre de vue :
+	-nbviews=(int)
+
+	> Régler le pas (initial) de variation de l'angle de rotation de la caméra
+	-angle=(float)
+
+	> Régler les dimentions de la fenêtre OpenGL
+	-width=(int)
+	-height=(int)
+
+	> Régler le mode
+	-bmp //pour enregistrer un bmp pour chaque vue dans un dossier image 
+	ou
+	-fpga //pour créer un tableau color + depth 
+
+	> Régler le chemin du .obj  (optionnel)
+	-obj=(string)
+	nb : si cette option n'est pas rentrée un cube sera dessiné à la place
+
+	Exemple :
+
+	-nbviews=8 -angle=1 -width=500 -height=500 -bmp -obj=Lara.obj
+
+
+Touches de controles : 
+
+	> Rotation de la caméra : 'q' et 'd'
+	> Translation (avant, arrière) : 's' et 'z'
+	> Régler le pas de l'angle de rotation : 'a' et 'e'
