@@ -1,7 +1,7 @@
 #include "qdbmp.h"
 #include <stdio.h>
-#include "algorithme.h"
 #include <stdlib.h>
+#include "algorithme.h"
 
 //#include <GL/glew.h>
 //#include <GL/gl.h>
@@ -18,21 +18,26 @@
 #define HAUTEUR_IMAGE 900 // hauteur de l’image
 #define LARGEUR_IMAGE 1440 // largeur de l’image
 #define ZREF 5 // distance caractéristique permettant de différencier un étirement d'un trou
-#define K 0.7 //facteur de shrink d'échelle des z = 1/(sqrt(2)*cos(ALPHA))
+#define distance_inter_oculaire1 6.5
+#define distance_inter_oculaire2 13.0
+
 
 //void CreateAndSaveBMP(const char *fileName, unsigned int width, unsigned int height, unsigned int nb_components, unsigned char *pixels);
 //void WriteHeader(FILE *bmpfile, unsigned int width , unsigned int height);
 //unsigned char * loadBMP ( FILE * img , int * width, int * height);
 //void algorithme_couleur (char * data_image, char * data_depth, int width, int height);
 
-int main (int argc, char *argv[]){
-
+int main (int argc, char *argv[])
+{
   
   int width;
   int height;
   BMP * data_image ;
   BMP * data_depth ;
-  BMP * data_out ;
+  BMP * data_out1 ;
+  BMP * data_out2 ;
+  BMP * data_out3 ;
+  BMP * data_out4 ;
 
   /* Check arguments */
 	if ( argc != 3 )
@@ -54,25 +59,23 @@ int main (int argc, char *argv[]){
   width = BMP_GetWidth(data_image) ;
   height = BMP_GetHeight(data_image) ;
   
-  // Création de l'image future
-  data_out = BMP_Create(width,height,24) ;
+  // Création des 4 images futures
+  data_out1 = BMP_Create(width,height,24) ;
+  data_out2 = BMP_Create(width,height,24) ;
+  data_out3 = BMP_Create(width,height,24) ;
+  data_out4 = BMP_Create(width,height,24) ;
   
   // Execution de l'algorithme
-  algorithme (data_out,data_image, data_depth, width, height);
+  algorithme (data_out1,data_image, data_depth, width, height, 1, 1.0);
+  algorithme (data_out2,data_image, data_depth, width, height, 1, 2.0);
+  algorithme (data_out3,data_image, data_depth, width, height, -1, 2.0);
+  algorithme (data_out4,data_image, data_depth, width, height, -1, 1.0);
   
   // Ecriture de l'image résultante
-  BMP_WriteFile(data_out,"image.bmp") ;
+  BMP_WriteFile(data_out1,"image1.bmp") ;
+  BMP_WriteFile(data_out2,"image2.bmp") ;
+  BMP_WriteFile(data_out3,"image3.bmp") ;
+  BMP_WriteFile(data_out4,"image4.bmp") ;
 
-return 0;
-
+  return 0;
 }
-
-/*void algorithme_couleur (char * data_image, char * data_depth, int width, int height){
-	int i=0;
-	for(i; i<3 * width * height; i=i+3){
-		data_image[i]=data_depth[i];	
-	}
-}*/
-
-
-

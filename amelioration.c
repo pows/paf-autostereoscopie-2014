@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define DELTA 20
+#define DELTA 5
 
-BMP* ameliorer(BMP* data_image, BMP* data_depth,int height, int width);
-int ameliorer_pixel(int i, int j, BMP* data_image, int width);
+void ameliorer(BMP* data_out, BMP* data_image, BMP* data_depth, int height, int width);
+unsigned char ameliorer_pixel(int i, int j, BMP* data_out,BMP* data_image, BMP* data_depth, int width);
 
 int main (int argc, char* argv[]){
 
@@ -35,51 +35,88 @@ int main (int argc, char* argv[]){
   height = BMP_GetHeight(data_image) ;
 
   // Création de l'image future
-  data_out = BMP_Create(width,height,8) ;
+  data_out = BMP_Create(width,height,24) ;
 
   //execution de l'algorithme d'amelioration
-  data_out = ameliorer(data_image, data_depth, height, width);
+  int i, j; 
+  unsigned char val ;
+  for (j=0; j<height; j++){
+    for (i = 0; i<width; i++){ 
+      val = ameliorer_pixel(i,j,data_out,data_image,data_depth,width) ;
+      //printf("%d\n",val) ;
+      BMP_SetPixelRGB(data_out, i, j, val,val,val);
+    }
+  }
+  //ameliorer(data_out,data_image, data_depth, height, width);
 
   //ecriture de l'image résultante
   BMP_WriteFile(data_out, "depth.bmp");
 
- 
+  return 0 ;
 }
 
 
-BMP* ameliorer(BMP* data_image, BMP* data_depth, int height, int width){
+void ameliorer(BMP* data_out, BMP* data_image, BMP* data_depth, int height, int width){
   
   int i, j; 
-  float val;
-  BMP* data_out;
+  unsigned char val ;
   for (j=0; j<height; j++){
     for (i = 0; i<width; i++){ 
-      BMP_GetPixelIndex(data_depth, j, i, &val);
-      BMP_SetPixelIndex(data_out, j, ameliorer_pixel(i,j,data_image, val), width);
+      val = ameliorer_pixel(i,j,data_out,data_image,data_depth,width) ;
+      printf("%d\n",val) ;
+      BMP_SetPixelIndex(data_out, i, j, val);
     }
   }
-
 }
 
 
 
-int ameliorer_pixel(int i, int j, BMP* data_image, int width){
+unsigned char ameliorer_pixel(int i, int j, BMP* data_out, BMP* data_image, BMP* data_depth, int  width){
 
 	unsigned char r0, g0, b0, r1, g1, b1, r2, g2, b2;
+        float fr0, fg0, fb0, fr1, fg1, fb1, fr2, fg2, fb2;
+        unsigned char z0,z1,z2 ;
+
+        BMP_GetPixelIndex(data_depth, i, j, &z0);
+        if (i==0) return z0;
+	if (i==width) return z0;
+        //printf("%d %d %d \n",z0,z1,z2) ;
+      
+        unsigned char zz, zzz; 
+        BMP_GetPixelRGB(data_out,i-1,j,&z1,&zz,&zzz) ;
+        //BMP_GetPixelIndex(data_depth, i-1, j, &z1);
+        BMP_GetPixelIndex(data_depth, i+1, j, &z2);
+
 	BMP_GetPixelRGB(data_image, i-1, j, &r1, &g1, &b1);
 	BMP_GetPixelRGB(data_image, i+1, j, &r2, &g2, &b2);
 	BMP_GetPixelRGB(data_image, i, j, &r0, &g0, &b0);
-
-
-	if (i==0) return i;
-	if (j==width) return i;
-	if ( sqrt( pow((fabs((unsigned int)r1-(unsigned int)r2)),2) + pow((fabs((unsigned int)g1-(unsigned int)g2)),2) + pow((fabs((unsigned int)b1-(unsigned int)b2)),2) ) >  DELTA) 
+        fr0 = r0 ;
+        fr1 = r1 ;
+        fr2 = r2 ;
+        fg0 = g0 ;
+        fg1 = g1 ;
+        fg2 = g2 ;
+        fb0 = b0 ;
+        fb1 = b1 ;
+        fb2 = b2 ;
+       // printf("%f %f %f \n",fr0,fg0,fb0) ;
+       // printf("%f %f %f \n",fr1,fg1,fb1) ;
+       // printf("%f %f %f \n",fr2,fg2,fb2) ;
+       
+        
+        float delta12, delta10, delta02 ;
+        
+        delta12 = sqrt( pow(fr1-fr2,2) + pow(fg1-fg2,2) + pow(fb1-fb2,2)) ;
+        delta10 = sqrt( pow(fr1-fr0,2) + pow(fg1-fg0,2) + pow(fb1-fb0,2)) ;
+	delta02 = sqrt( pow(fr0-fr2,2) + pow(fg0-fg2,2) + pow(fb0-fb2,2)) ;
+	//printf("%f %f %f \n",delta12,delta10,delta02) ;
+        if ( delta12  >  DELTA) 
 	{
-		if ( sqrt( pow((fabs((unsigned int)r0-(unsigned int)r1)),2) + pow((fabs((unsigned int)g0-(unsigned int)g1)),2) + pow((fabs((unsigned int)b0-(unsigned int)b1)),2 )) < sqrt( pow((fabs((unsigned int)r0-(unsigned int)r2)),2) + pow((fabs((unsigned int)g0-(unsigned int)g2)),2) + pow((fabs((unsigned int)b0-(unsigned int)b2)),2) )) 
+		if (delta10 < delta02)
 		{
-			return i-1;
-		} else return i+1;
-	} return i;
+			return z1;
+		} else return z2;
+	} else return z0;
 
 }
 
