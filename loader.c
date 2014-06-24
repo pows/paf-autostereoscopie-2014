@@ -1,17 +1,10 @@
-#include "qdbmp.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "optimisation.h"
+#include <unistd.h>
+#include "qdbmp.h"
+#include "algorithme.h"
 
-#define DELTA 64
-#define DECRAN 80.0 // Distance écran - utilisateur (en cm)
-#define P 10.0 //plage de perception de la profondeur (en centimètre ~ profondeur du cube)
-#define distance_inter_oculaire 6.5 // distance entre les yeux (en degrés)
-#define Z0 5.0 // position de la face avant du cube dans l'espace
-#define HAUTEUR_IMAGE 900 // hauteur de l’image
-#define LARGEUR_IMAGE 1440 // largeur de l’image
-#define DZREF 2.0 // distance caractéristique permettant de différencier un étirement d'un trou
-#define pixel_cm 0.03 // largeur d'un pixel en cm
+
 
 int main (int argc, char*argv[]){
 
@@ -60,27 +53,26 @@ int main (int argc, char*argv[]){
   data_out6 = BMP_Create(width,height,24) ;
   data_out7 = BMP_Create(width,height,24) ;
   data_out8 = BMP_Create(width,height,24) ;
-
-  // Execution de l'algorithme
-  algorithme (data_out1,data_image, data_depth, width, height, 1.0, 1, A, B);
-  algorithme (data_out2,data_image, data_depth, width, height, 1.25, 1, A, B);
-  algorithme (data_out3,data_image, data_depth, width, height, 2.0, 1, A, B);
-  algorithme (data_out4,data_image, data_depth, width, height, 4.0, 1, A, B);
-  algorithme (data_out5,data_image, data_depth, width, height, 4.0, -1, A, B);
-  algorithme (data_out6,data_image, data_depth, width, height, 2.0, -1, A, B);
-  algorithme (data_out7,data_image, data_depth, width, height, 1.25, -1, A, B);
-  algorithme (data_out8,data_image, data_depth, width, height, 1.0, -1, A, B);
+	
+	// création des plusieurs processus fils
+	int forks[3];
+	forks[0] = fork();
+	forks[1] = fork();
+	forks[2] = fork();
+	
+	
+	
+	// Execution de l'algorithme et écriture de l'image résultante sur chaque processus
+	if (forks[0] ==0 && forks[1] ==0 && forks[2] ==0){ algorithme (data_out1,data_image, data_depth, width, height, 1.0, 1, A, B); BMP_WriteFile(data_out1,"image1.bmp") ; }
+	if (forks[0] ==0 && forks[1] ==0 && forks[2] !=0){ algorithme (data_out2,data_image, data_depth, width, height, 1.25, 1, A, B); BMP_WriteFile(data_out2,"image2.bmp") ; }
+	if (forks[0] ==0 && forks[1] !=0 && forks[2] ==0){ algorithme (data_out3,data_image, data_depth, width, height, 2.0, 1, A, B); BMP_WriteFile(data_out3,"image3.bmp") ;}
+	if (forks[0] ==0 && forks[1] !=0 && forks[2] !=0){ algorithme (data_out4,data_image, data_depth, width, height, 4.0, 1, A, B); BMP_WriteFile(data_out4,"image4.bmp") ;}
+	if (forks[0] !=0 && forks[1] ==0 && forks[2] ==0){ algorithme (data_out5,data_image, data_depth, width, height, 4.0, -1, A, B); BMP_WriteFile(data_out5,"image5.bmp") ;}
+	if (forks[0] !=0 && forks[1] ==0 && forks[2] !=0){ algorithme (data_out6,data_image, data_depth, width, height, 2.0, -1, A, B); BMP_WriteFile(data_out6,"image6.bmp") ; }
+	if (forks[0] !=0 && forks[1] !=0 && forks[2] ==0){ algorithme (data_out7,data_image, data_depth, width, height, 1.25, -1, A, B); BMP_WriteFile(data_out7,"image7.bmp") ;}
+	if (forks[0] !=0 && forks[1] !=0 && forks[2] !=0){ algorithme (data_out8,data_image, data_depth, width, height, 1.0, -1, A, B); BMP_WriteFile(data_out8,"image8.bmp") ;}
   
 
-  // Ecriture de l'image résultante
-  BMP_WriteFile(data_out1,"image1.bmp") ;
-  BMP_WriteFile(data_out2,"image2.bmp") ;
-  BMP_WriteFile(data_out3,"image3.bmp") ;
-  BMP_WriteFile(data_out4,"image4.bmp") ;
-  BMP_WriteFile(data_out5,"image5.bmp") ;
-  BMP_WriteFile(data_out6,"image6.bmp") ;
-  BMP_WriteFile(data_out7,"image7.bmp") ;
-  BMP_WriteFile(data_out8,"image8.bmp") ;
 
   return 0;
 
