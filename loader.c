@@ -1,7 +1,7 @@
 #include "qdbmp.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "optimisation.h"
+#include "algorithme.h"
 
 #define DELTA 64
 #define DECRAN 80.0 // Distance écran - utilisateur (en cm)
